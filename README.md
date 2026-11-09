@@ -2,12 +2,14 @@
 
 Application familiale statique, utilisable sur GitHub Pages sans serveur applicatif.
 
-## Version 2
+## Version 2.2
 
 - Mode local conservé, reprise des devoirs de la version initiale sans effacer la clé historique.
 - Profils personnalisables sur l’appareil ou dans la base privée. Aucun prénom réel n’est livré dans cette version.
 - Devoirs avec durée, échéance, validation de dates et import texte atomique.
-- Planning indicatif à capacité quotidienne, séances de 25 min maximum et alertes de surcharge.
+- Planning par enfant synchronisé : créneaux par jour, lundi alterné, mode vacances manuel, séances de 25 min maximum et pauses de 5 min comprises dans le budget.
+- Modification des consignes et estimations, repérage des contrôles et des consignes manquantes.
+- QCM d’entraînement généraux en conjugaison, électricité et anglais, corrigés localement. Ces exercices ne prétendent pas reproduire une page de manuel.
 - Fiches de révision espacée (1, 3, 7, 14, 30 jours).
 - Connexion parent Supabase et création du compte réservée aux emails préalablement autorisés, avec confirmation d’email.
 - Synchronisation à la connexion, après chaque écriture, au retour sur l’onglet et toutes les 30 secondes tant qu’il est visible.
@@ -43,4 +45,4 @@ La branche `backup/pre-v2-2026-11-09` conserve la version initiale. Un retour ar
 
 ## Limites
 
-Le planning ne connaît pas encore les emplois du temps scolaires, activités et vacances. Il ne réserve pas d’heures fixes. Pas d’OCR, d’IA externe, de notification, de connexion scolaire ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.
+Les créneaux sont saisis par le parent ; le planning ne récupère pas automatiquement les emplois du temps scolaires ni les vacances. Le mode vacances s’active manuellement. Il ne réserve pas d’heures fixes. Pas encore d’OCR, de traitement des photos dans l’application, d’IA externe, de notification, de connexion École Directe ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.

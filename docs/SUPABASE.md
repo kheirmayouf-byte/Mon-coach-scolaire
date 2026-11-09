@@ -13,13 +13,13 @@ Corrections appliquées :
 - Liste privée d’emails parents autorisés, inaccessible aux clients. Les créations Auth non autorisées sont bloquées par un trigger. Le rattachement au foyer intervient uniquement après confirmation de l’email autorisé.
 - Deux profils créés dans la base privée ; aucun prénom réel ni identifiant de foyer n’est enregistré dans le dépôt.
 
-L’analyseur Supabase ne remonte plus de WARN ou ERROR de sécurité. Le signal INFO « RLS sans policy » de la liste privée est volontaire : aucune policy et aucun grant client permettent d’y accéder. Les index neufs peuvent être signalés comme inutilisés tant que l’application n’a pas d’activité.
+Les alertes initiales de fonctions privilégiées accessibles aux clients ont été corrigées. Le signal INFO « RLS sans policy » de la liste privée est volontaire : aucune policy et aucun grant client permettent d’y accéder. Les index neufs peuvent être signalés comme inutilisés tant que l’application n’a pas d’activité.
 
 ## Configuration de l’application
 
 `src/public-config.js` contient uniquement l’URL API et une clé **publishable**, destinées au navigateur. Ni service_role, ni secret Auth, ni mot de passe, ni email privé. La configuration est chargée automatiquement. Les paramètres avancés restent disponibles pour changer de projet sur un appareil.
 
-La connexion parent est prête, mais la liste d’emails autorisés est initialement vide. Le propriétaire doit désigner son email avant toute autorisation. Aucun email n’a été envoyé et aucun compte parent réel n’a été créé pendant cette mise en place.
+La connexion parent est opérationnelle. Les autorisations individuelles sont administrées exclusivement dans la base privée ; leurs emails, UUID et états ne sont pas consignés dans le dépôt.
 
 ## Première connexion d’un parent
 
@@ -53,3 +53,13 @@ Les sessions Auth utilisent `sessionStorage`. Les données cloud restent en mém
 Ne pas publier dans Git les emails autorisés, UUID de foyer, tokens, devoirs, prénoms, exports ou captures familiales.
 
 Référence des alertes traitées : https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
+
+## Planning et imports (version 2.2)
+
+`mcs_planning_preferences` conserve les disponibilités privées de chaque enfant. RLS et clé étrangère composite limitent ces lignes au foyer du parent. Le contrôle de version protège les réglages contre les écrasements concurrents. Les mises à jour périodiques attendent pendant la saisie d’un formulaire pour préserver son contenu.
+
+`mcs_tasks.detail_missing` signale les consignes à compléter, `is_assessment` les évaluations et `source_key` permet un import administratif sans doublons. Aucune consigne réelle n’est livrée dans une migration ou un test. Les durées importées sont provisoires et modifiables. Les statuts ambigus d’une source restent explicités dans la consigne sans être convertis arbitrairement en travaux terminés.
+
+Les horaires, lieux et budgets restent dans la base privée. Les pauses sont comprises dans les budgets du planning. Les absences ponctuelles et les horaires de cours précis ne sont pas déduits automatiquement ; une proposition le jour de l’échéance doit être vérifiée par le parent.
+
+Point Auth restant : l’analyseur signale la protection contre les mots de passe compromis comme désactivée. Ce réglage global n’est pas modifiable par les outils du connecteur actuellement disponibles. Référence : https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection

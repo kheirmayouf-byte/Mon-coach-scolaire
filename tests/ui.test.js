@@ -41,3 +41,17 @@ test('parent login and authorized registration ready without copying configurati
  assert.equal(w.document.getElementById('signup-password').minLength,12);
  assert.equal(w.document.getElementById('profile').options.length,3);
 });
+test('planning preferences form saves and training quiz runs locally',async(t)=>{
+ const dom=boot(),w=dom.window;t.after(()=>w.close());click(w,'[data-tab=planning]');
+ const form=w.document.querySelector('form[data-form=planning]');
+ form.querySelector('[name=minutes-2]').value='0';form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await tick();
+ assert.equal(JSON.parse(w.localStorage.getItem('mcs-local-v2')).preferences[0].week_minutes[2],0);
+ click(w,'[data-tab=revision]');click(w,'#generatePractice');assert.equal(w.document.querySelectorAll('#practiceForm fieldset').length,5);
+ for(let i=0;i<5;i++)w.document.querySelector(`[name=q${i}]`).checked=true;
+ submit(w,'practiceForm');await tick();assert.match(w.document.getElementById('content').textContent,/Résultat : \d \/ 5/);
+});
+test('imported homework can be completed with details and its estimate edited',async(t)=>{
+ const dom=boot({children:[{id:'a',name:'Enfant A'}],cards:[],tasks:[{id:'t',child:'a',subject:'Maths',description:'Détail absent',detail_missing:true,given:'2026-01-05',due:'2026-01-06',minutes:20,done:false}]});const w=dom.window;t.after(()=>w.close());
+ click(w,'[data-tab=tasks]');click(w,'[data-edit=t]');fill(w,'description','Faire un exercice');fill(w,'minutes','35');w.document.querySelector('[name=detailComplete]').checked=true;submit(w,'taskForm');await tick();
+ const task=JSON.parse(w.localStorage.getItem('mcs-local-v2')).tasks[0];assert.equal(task.minutes,35);assert.equal(task.description,'Faire un exercice');assert.equal(task.detail_missing,false);
+});
