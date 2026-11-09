@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
-const html=readFileSync('index.html','utf8').replace('<script defer src="app.js"></script>','');
+const html=readFileSync('index.html','utf8').replace(/<script defer src=\"app\.js[^\"]*\"><\/script>/,'');
 const bundle=()=>readFileSync('app.js','utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,20));
 function boot(seed){const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously'});const w=dom.window;if(seed)w.localStorage.setItem('mcs-local-v2',JSON.stringify(seed));w.confirm=()=>true;w.eval(bundle());return dom;}
