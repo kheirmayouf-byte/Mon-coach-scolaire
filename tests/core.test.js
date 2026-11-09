@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {validateTask,validDate,plan,parseImport,nextReview} from '../src/core.js';
+const task=(patch={})=>({id:'t1',child:'a',subject:'Maths',description:'Exercice',given:'2026-11-09',due:'2026-11-10',minutes:60,done:false,...patch});
+test('real calendar dates and coherent estimates',()=>{assert.equal(validDate('2026-02-30'),false);assert.equal(validDate('2028-02-29'),true);assert.throws(()=>validateTask(task({due:'2026-11-08'})));assert.throws(()=>validateTask(task({minutes:-2})));});
+test('capacity, chunks and date bounds',()=>{const p=plan([task()],40,'2026-11-09');assert.equal(p.slots.reduce((n,s)=>n+s.minutes,0),60);assert.ok(p.slots.every(s=>s.minutes<=25 && s.date>='2026-11-09'&&s.date<='2026-11-10'));assert.equal(p.slots.filter(s=>s.date==='2026-11-09').reduce((n,s)=>n+s.minutes,0),40);});
+test('overdue and overload are explicit; future tasks never scheduled early',()=>{assert.equal(plan([task({due:'2026-11-09'})],40,'2026-11-10').unscheduled[0].minutes,60);assert.ok(plan([task({given:'2026-11-12',due:'2026-11-12'})],40,'2026-11-09').slots.every(s=>s.date==='2026-11-12'));});
+test('capacity independent per child and no completed work',()=>{const p=plan([task({minutes:40}),task({id:'t2',child:'b',minutes:40}),task({id:'t3',done:true})],40,'2026-11-09');assert.equal(p.slots.reduce((n,s)=>n+s.minutes,0),80);assert.equal(p.unscheduled.length,0);});
+test('import rejects invalid dates and another child in child view',()=>{const children=[{id:'a',name:'Enfant A'},{id:'b',name:'Enfant B'}];const p=parseImport('Enfant B | Maths | 2026-11-09 | 2026-11-10 | Exo',children,'a');assert.equal(p.errors.length,1);assert.equal(parseImport('Enfant A | Maths | 2026-11-09 | 2026-11-10 | Exo | suite',children).tasks[0].description,'Exo | suite');});
+test('spaced review crosses year boundary',()=>assert.equal(nextReview(2,'2026-12-28'),'2027-01-04'));

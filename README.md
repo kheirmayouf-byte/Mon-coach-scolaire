@@ -1,2 +1,46 @@
-# Mon-coach-scolaire
-App pour organiser et faire les devoirs 
+# Mon Coach Scolaire
+
+Application familiale statique, utilisable sur GitHub Pages sans serveur applicatif.
+
+## Version 2
+
+- Mode local conservé, reprise des devoirs de la version initiale sans effacer la clé historique.
+- Profils personnalisables sur l’appareil ou dans la base privée. Aucun prénom réel n’est livré dans cette version.
+- Devoirs avec durée, échéance, validation de dates et import texte atomique.
+- Planning indicatif à capacité quotidienne, séances de 25 min maximum et alertes de surcharge.
+- Fiches de révision espacée (1, 3, 7, 14, 30 jours).
+- Connexion parent Supabase par email/mot de passe, inscription publique absente de l’interface.
+- Synchronisation à la connexion, après chaque écriture, au retour sur l’onglet et toutes les 30 secondes tant qu’il est visible.
+- Contrôle de version contre les écrasements entre appareils ; pas de file d’attente hors ligne cachée.
+- Export JSON privé. Les données cloud ne sont pas mises dans le cache local applicatif.
+
+Les espaces enfants sont des vues du compte parent. Ils ne constituent pas des comptes enfants ni une restriction d’accès entre sœurs. Utilisation accompagnée sur un appareil autorisé.
+
+## Développement
+
+Node 24 ou supérieur :
+
+```sh
+npm ci
+npm test
+npm run build
+python -m http.server 8765
+```
+
+`app.js` est le bundle publié, sans dépendance CDN. Le fichier de verrouillage fixe les dépendances. Les tests utilisent Node, jsdom et PostgreSQL embarqué PGlite (RLS réelle, contexte Auth simulé). Cela ne remplace pas les tests de la configuration Supabase hébergée.
+
+## Activation Supabase
+
+Lire [le guide](docs/SUPABASE.md). La migration fournie crée des tables `mcs_*` isolées ; elle ne modifie pas les anciennes tables ni leurs politiques.
+
+Sans accès à la base existante, son schéma et sa sécurité ne sont pas certifiés. La synchronisation ne doit être activée qu’après inspection du projet, application de la migration et provisionnement administratif des parents/profils.
+
+## Publication et retour arrière
+
+GitHub Pages sert les fichiers à la racine de `main`. Le bundle est versionné pour conserver ce mode de publication. Le workflow CI exécute les tests et vérifie que le bundle correspond aux sources.
+
+La branche `backup/pre-v2-2026-11-09` conserve la version initiale. Un retour arrière passe par un commit qui rétablit les fichiers de cette branche, sans réécrire l’historique. Ne pas réinjecter de données familiales dans Git.
+
+## Limites
+
+Le planning ne connaît pas encore les emplois du temps scolaires, activités et vacances. Il ne réserve pas d’heures fixes. Pas d’OCR, d’IA externe, de notification, de connexion scolaire ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.
