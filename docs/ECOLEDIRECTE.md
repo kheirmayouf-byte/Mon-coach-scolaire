@@ -22,7 +22,7 @@ L’origine navigateur autorisée est `https://kheirmayouf-byte.github.io`. Les 
 
 Déployer `supabase/functions/ecoledirecte/index.ts`, `protocol.js` et `envelope.js` avec `verify_jwt: true`, puis publier le bundle normal `app.js` et `index.html`. Le domaine ÉcoleDirecte n’a pas besoin d’être autorisé par la CSP du navigateur : seul le serveur l’appelle.
 
-Le déploiement du connecteur reste en attente d’un accord explicite sur le transit des identifiants par Supabase. Aucune fonction n’a été déployée au cours de cette préparation.
+Le parent a explicitement autorisé le déploiement et le transit des identifiants par Supabase le 9 novembre 2026. La fonction `ecoledirecte` version 1 a été activée avec vérification JWT. La première connexion réelle ÉcoleDirecte doit être effectuée par le parent dans l’application.
 
 Le protocole n’est ni publié ni garanti par Aplim. Le paramètre de version `4.101.4` et les échanges de connexion sont fondés sur le projet de référence https://github.com/jeromeboivin/EcoleDirecteMCP consulté le 9 novembre 2026 ; ce protocole est implémenté ici séparément. Si ÉcoleDirecte bloque le serveur, change l’authentification ou son format, le connecteur affiche un échec et n’importe rien. Ne pas multiplier les tentatives ; passer par le site officiel en cas de blocage ou de charte à accepter.
 
