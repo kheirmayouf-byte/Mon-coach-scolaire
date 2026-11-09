@@ -10,7 +10,8 @@ function boot(){
  const dom=new JSDOM(html,{url:'https://kheirmayouf-byte.github.io/Mon-coach-scolaire/',runScripts:'dangerously'}),w=dom.window;
  const tasks=[],calls=[];let onAuth;
  const children=[{id:'a',name:'Élève A'},{id:'b',name:'Élève B'}];
- w.__supabaseMock={auth:{onAuthStateChange:fn=>{onAuth=fn;},getSession:async()=>({data:{session:{}}}),getUser:async()=>({data:{user:{id:'parent'}}}),signOut:async()=>{onAuth('SIGNED_OUT');return {}; }},from(table){return {select(){return {eq:async()=>({data:table==='mcs_members'?[{family_id:'family'}]:table==='mcs_children'?children:table==='mcs_tasks'?tasks:[],error:null})};},insert:async(rows)=>{tasks.push(...rows);return {};}};},functions:{invoke:async(name,{body})=>{
+ w.__supabaseMock={auth:{onAuthStateChange:fn=>{onAuth=fn;},getSession:async()=>({data:{session:{}}}),getUser:async()=>({data:{user:{id:'parent'}}}),signOut:async()=>{onAuth('SIGNED_OUT');return {}; }},from(table){return {select(){return {eq:async()=>({data:table==='mcs_members'?[{family_id:'family'}]:table==='mcs_children'?children:table==='mcs_tasks'?tasks:[],error:null})};},insert:async(rows)=>{tasks.push(...rows);return {};}};},rpc:async(name,{p_rows})=>{tasks.push(...p_rows.map(r=>({...r,version:1})));return {data:{added:p_rows.length,updated:0}};},functions:{invoke:async(name,{body})=>{
+ if(name==='coach-ai')return {data:{available:false}};
  calls.push({name,body});const base={stage:'ready',session:'encrypted-session',expires:Date.now()+1200000,students:[{key:'10:25',name:'Élève A',className:'Classe'},{key:'10:26',name:'Élève B',className:'Classe'}]};
  if(body.action==='homework')base.rows=[{studentId:25,remoteId:123,subject:'Maths',given:'2026-11-09',due:'2026-11-10',html:'<p>Exercice</p>',documents:[]}];return {data:base};}}};
  w.eval(bundled.outputFiles[0].text);return {dom,w,tasks,calls};

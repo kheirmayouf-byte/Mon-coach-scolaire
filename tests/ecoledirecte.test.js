@@ -72,3 +72,10 @@ test('missing token and missing pupils are distinct; diagnostics contain no acco
   assert.doesNotMatch(JSON.stringify(e.diagnostic),/private|password|token|25|10/);return true;
  });
 });
+
+test('homework attachment references are sealed, downloads are bounded and cannot target arbitrary files',async()=>{
+ const m=mock([{text:''},{body:{code:200,token:'login-token',data:students}},{body:{code:200,data:{'2026-11-10':[{idDevoir:123,matiere:'Maths',donneLe:'2026-11-09',documentsAFaire:true}]}}},{body:{code:200,data:{matieres:[{id:123,matiere:'Maths',aFaire:{idDevoir:123,contenu:b64('<p>Exercice</p>'),documents:[{id:77,libelle:'Cours.pdf'}]}}]}}},{text:'%PDF-1.7\nfixture',headers:{'content-type':'application/pdf'}}]);
+ const c=new EDClient({},m.fetch);await c.login('user','secret');const result=await c.homework('10:25','2026-11-09','2026-11-22');assert.equal(result.rows[0].attachment_refs[0].key,'25:123:77');
+ await assert.rejects(c.download('25:123:99'),/Relis les devoirs/);assert.equal(m.calls.length,4);
+ const file=await c.download('25:123:77');assert.equal(file.file.mime,'application/pdf');assert.ok(m.calls[4].url.includes('fichierId=77'));assert.equal(m.calls[4].init.headers['X-Token'],'login-token');
+});

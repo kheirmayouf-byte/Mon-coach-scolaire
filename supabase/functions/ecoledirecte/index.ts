@@ -29,7 +29,7 @@ Deno.serve(async(req:Request)=>{
   if(Number(req.headers.get('content-length')||0)>65000)return reply({error:'Demande trop volumineuse.'},413);
   const raw=await req.text();if(raw.length>65000)return reply({error:'Demande trop volumineuse.'},413);
   const body=JSON.parse(raw);
-  if(!['login','answer','homework'].includes(body.action))return reply({error:'Action non autorisée.'},400);
+  if(!['login','answer','homework','download'].includes(body.action))return reply({error:'Action non autorisée.'},400);
   rate(parent.id,body.action);
   // Server-only material; never used to authorize database access or sent to the browser.
   const secret=Deno.env.get('MCS_ED_ENCRYPTION_KEY')||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -46,7 +46,8 @@ Deno.serve(async(req:Request)=>{
    if(body.action==='answer'){
     result=await adapter.answer(body.answer);
     if(result.stage==='ready')expires=Date.now()+20*60000;
-   }else result=await adapter.homework(body.student,body.from,body.to);
+   }else if(body.action==='download')result=await adapter.download(body.key);
+   else result=await adapter.homework(body.student,body.from,body.to);
   }
   return reply({...result,session:await envelope.seal(adapter.state,parent.id,expires),expires});
  }catch(error){

@@ -18,7 +18,7 @@ export function checkReply(reply) {
 export function validDate(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;}
 export class EDClient {
  constructor(state={},fetcher=fetch){this.state={cookies:{},...state};this.fetcher=fetcher;this.deadline=Date.now()+45000;}
- async request(path,payload,gtk=true,bootstrap=false){
+ async request(path,payload,gtk=true,bootstrap=false,binary=false){
   // Callers supply only hard-coded route templates; redirects never receive credentials.
   const headers={'User-Agent':UA,Accept:'application/json','Origin':'https://www.ecoledirecte.com','Referer':'https://www.ecoledirecte.com/'};
   const s=this.state;
@@ -36,6 +36,18 @@ export class EDClient {
   if(response.headers.get('X-GTK'))s.gtk=response.headers.get('X-GTK');
   if(response.headers.get('X-Token'))s.token=response.headers.get('X-Token');
   if(response.headers.get('2FA-Token'))s.twofa=response.headers.get('2FA-Token');
+  if(binary){
+   if(Number(response.headers.get('content-length')||0)>10485760)throw new EDProblem('Pièce jointe trop volumineuse (10 Mo maximum).');
+   const bytes=new Uint8Array(await response.arrayBuffer());
+   if(bytes.length<1||bytes.length>10485760)throw new EDProblem('Pièce jointe vide ou trop volumineuse.');
+   let mime=response.headers.get('content-type')?.split(';')[0]||'';
+   if(bytes[0]===0x25&&bytes[1]===0x50&&bytes[2]===0x44&&bytes[3]===0x46)mime='application/pdf';
+   else if(bytes[0]===0xff&&bytes[1]===0xd8)mime='image/jpeg';
+   else if(bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e)mime='image/png';
+   if(!['application/pdf','image/jpeg','image/png','image/webp','text/plain'].includes(mime))throw new EDProblem('Cette pièce jointe doit être convertie en PDF ou en image.');
+   let encoded='';for(let i=0;i<bytes.length;i+=8192)encoded+=String.fromCharCode(...bytes.subarray(i,i+8192));
+   return {base64:btoa(encoded),mime,bytes:bytes.length};
+  }
   const text=await response.text();
   if(text.length>2000000)throw new EDProblem('Réponse ÉcoleDirecte trop volumineuse.');
   let reply;try{reply=JSON.parse(text);}catch{if(bootstrap&&!text.trim())return {};throw new EDProblem('Réponse ÉcoleDirecte non reconnue.');}
@@ -92,7 +104,7 @@ export class EDClient {
   const overview=await this.request(`Eleves/${student.id}/cahierdetexte.awp?verbe=get`,{},false);checkReply(overview);
   if(!overview.data||typeof overview.data!=='object'||Array.isArray(overview.data))throw new EDProblem('Format du cahier de texte non reconnu.');
   const dates=Object.keys(overview.data).filter(d=>validDate(d)&&d>=from&&d<=to).sort();
-  const rows=[];
+  const rows=[];this.state.attachments=[];
   for(const due of dates){
    if(!Array.isArray(overview.data[due]))throw new EDProblem('Liste des devoirs non reconnue.');
    if(!overview.data[due].length)continue;
@@ -102,13 +114,30 @@ export class EDClient {
     if(!Number.isSafeInteger(item.idDevoir)||!item.matiere)throw new EDProblem('Un devoir n’a pas d’identifiant stable. Aucun import effectué.');
     const subject=detail.data.matieres.find(m=>(m.aFaire?.idDevoir??m.id)===item.idDevoir);
     const work=subject?.aFaire;
+    const attachment_refs=[];
+    for(const d of (Array.isArray(work?.documents)?work.documents:[]).slice(0,30)){
+     const fileId=d.id??d.fichierId;
+     if((typeof fileId!=='number'&&typeof fileId!=='string')||!/^[a-zA-Z0-9_-]{1,100}$/.test(String(fileId)))continue;
+     const key=`${student.id}:${item.idDevoir}:${fileId}`,name=String(d.libelle||d.nom||d.nomFichier||'Document joint').slice(0,150);
+     const ref={key,name,student:student.key,fileId:String(fileId)};attachment_refs.push({key,name,student:student.key});this.state.attachments.push(ref);
+    }
     const documents=(work?.documents||[]).map(d=>String(d.libelle||d.nom||d.nomFichier||'Document joint').slice(0,150));
-    rows.push({student:student.key,studentId:student.id,remoteId:item.idDevoir,subject:String(item.matiere),given:work?.donneLe||item.donneLe,due,html:work?.contenu?decode64(work.contenu):'',is_assessment:flag(item.interrogation)||flag(subject?.interrogation),documents,hasDocuments:flag(item.documentsAFaire)||documents.length>0});
+    rows.push({student:student.key,studentId:student.id,remoteId:item.idDevoir,subject:String(item.matiere),given:work?.donneLe||item.donneLe,due,html:work?.contenu?decode64(work.contenu):'',attachment_refs,is_assessment:flag(item.interrogation)||flag(subject?.interrogation),documents,hasDocuments:flag(item.documentsAFaire)||documents.length>0});
    }
    if(rows.length>200)throw new EDProblem('Trop de devoirs : réduis la période.');
   }
+  if(this.state.attachments.length>80)throw new EDProblem('Trop de pièces jointes : réduis la période à importer.');
   return {stage:'ready',students:publicStudents(this.state.students),rows};
  }
+ async download(key){
+  if(this.state.stage!=='ready')throw new EDProblem('Connecte-toi à ÉcoleDirecte.');
+  const ref=this.state.attachments?.find(a=>a.key===key),student=this.state.students?.find(s=>s.key===ref?.student);
+  if(!ref||!student)throw new EDProblem('Relis les devoirs de cet élève pour récupérer cette pièce jointe.');
+  if(this.state.account!==student.account)throw new EDProblem('Relis les devoirs de cet élève avant de télécharger ses documents.');
+  const file=await this.request('telechargement.awp?verbe=get&leTypeDeFichier=FICHIER_CDT&fichierId='+encodeURIComponent(ref.fileId),{forceDownload:0},false,false,true);
+  return {stage:'ready',students:publicStudents(this.state.students),file:{...file,name:ref.name,key}};
+ }
+
 }
 // Numeric parent account codes are also documented by an independent adapter:
 // https://ed.natchen.fr/doc (account types). Only authenticated linked pupils are accepted.

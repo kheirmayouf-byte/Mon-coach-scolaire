@@ -1,0 +1,28 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+test('coach tables and document storage enforce family, child and source boundaries; refresh is atomic',async()=>{
+ const db=new PGlite();
+ await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);grant usage on schema public,auth to anon,authenticated;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant execute on function auth.uid() to anon,authenticated;
+ create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
+ for(const p of ['supabase/001_family_security.sql','supabase/migrations/20261109084957_family_planning_preferences.sql','supabase/migrations/20261109143632_coach_learning_v3.sql'])await db.exec(await readFile(p,'utf8'));
+ const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',fa='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',fb='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',ca='aaaaaaaa-1111-4111-8111-111111111111',cb='bbbbbbbb-2222-4222-8222-222222222222',ta='aaaaaaaa-3333-4333-8333-333333333333';
+ await db.exec(`insert into auth.users values('${a}'),('${b}');insert into mcs_families values('${fa}'),('${fb}');insert into mcs_members values('${a}','${fa}'),('${b}','${fb}');insert into mcs_children values('${ca}','${fa}','A'),('${cb}','${fb}','B');insert into mcs_tasks(id,family_id,child_id,subject,description,given,due,minutes,done,source_key) values('${ta}','${fa}','${ca}','Maths','Ancienne consigne','2026-11-09','2026-11-10',35,true,'ecoledirecte:2026:25:123');set role authenticated;select set_config('request.jwt.claim.sub','${b}',false);`);
+ for(const table of ['profiles','sessions','attempts','reminders','documents','parent_settings'])assert.equal((await db.query('select * from mcs_'+table)).rows.length,0);
+ await assert.rejects(db.query(`insert into mcs_profiles(family_id,child_id) values('${fa}','${ca}')`),/row-level security/);
+ await assert.rejects(db.query(`insert into mcs_sessions(family_id,child_id,task_id,subject) values('${fb}','${cb}','${ta}','X')`),/row-level security/);
+ await assert.rejects(db.query(`insert into storage.objects(bucket_id,name) values('mcs-documents','${fa}/${ca}/private')`),/row-level security/);
+ await db.exec(`select set_config('request.jwt.claim.sub','${a}',false);`);
+ await db.exec(`insert into mcs_profiles(family_id,child_id) values('${fa}','${ca}');insert into storage.objects(bucket_id,name) values('mcs-documents','${fa}/${ca}/private');`);
+ await assert.rejects(db.query(`update mcs_profiles set child_id='${cb}',version=2`),/permission denied/);
+ const change={id:ta,child_id:ca,source_key:'ecoledirecte:2026:25:123',expected_version:1,subject:'Maths',description:'Nouvelle consigne',given:'2026-11-09',due:'2026-11-12',minutes:20,detail_missing:false,is_assessment:true,attachment_refs:[]};
+ await db.query('select mcs_apply_ed_import($1,$2)',[fa,JSON.stringify([change])]);
+ const saved=(await db.query('select description,minutes,done,version from mcs_tasks')).rows[0];assert.deepEqual(saved,{description:'Nouvelle consigne',minutes:35,done:true,version:2});
+ const added={...change,id:'aaaaaaaa-4444-4444-8444-444444444444',source_key:'ecoledirecte:2026:25:124',expected_version:null};
+ await assert.rejects(db.query('select mcs_apply_ed_import($1,$2)',[fa,JSON.stringify([added,change])]),/Import conflict/);
+ assert.equal((await db.query('select count(*)::int as n from mcs_tasks')).rows[0].n,1);
+ await db.exec(`select set_config('request.jwt.claim.sub','${b}',false);`);assert.equal((await db.query('select * from storage.objects')).rows.length,0);
+ await assert.rejects(db.query('select mcs_apply_ed_import($1,$2)',[fa,JSON.stringify([change])]),/Family unavailable/);
+ await db.close();
+});

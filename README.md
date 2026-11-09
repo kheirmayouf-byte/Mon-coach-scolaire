@@ -1,9 +1,10 @@
 # Mon Coach Scolaire
 
-Application familiale statique, utilisable sur GitHub Pages sans serveur applicatif.
+Application familiale sur GitHub Pages, avec données et documents privés dans Supabase et connecteur ÉcoleDirecte côté serveur.
 
-## Version 2.3
+## Version 3.0
 
+- Agenda filtrable, devoirs compacts, chronomètre, indicateurs de charge et de progression, profils pédagogiques et supports privés : voir [la livraison V3 et ses limites](docs/V3.md).
 - Import ÉcoleDirecte non officiel depuis le compte parent : authentification avec question de sécurité ou TOTP, association manuelle élève/profil, aperçu et import atomique des nouveaux devoirs, sans doublons. Voir [le guide](docs/ECOLEDIRECTE.md).
 - Mode local conservé, reprise des devoirs de la version initiale sans effacer la clé historique.
 - Profils personnalisables sur l’appareil ou dans la base privée. Aucun prénom réel n’est livré dans cette version.
@@ -46,4 +47,4 @@ La branche `backup/pre-v2-2026-11-09` conserve la version initiale. Un retour ar
 
 ## Limites
 
-Les créneaux sont saisis par le parent ; le planning ne récupère pas automatiquement les emplois du temps scolaires ni les vacances. Le mode vacances s’active manuellement. Il ne réserve pas d’heures fixes. Pas encore d’OCR, de traitement des photos dans l’application, d’IA externe, de notification, de synchronisation ÉcoleDirecte automatique ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.
+Les profils enfants restent des vues accompagnées du compte parent. Les contenus des projets Mr Prof ne sont pas automatiquement importés. Le moteur IA libre est préparé mais non activé ; les quiz locaux utilisent les fiches et définitions des documents vérifiés. Les photos/scans nécessitent un texte ajouté ou vérifié ; les PDF textuels sont extraits localement. Aucun achat d’API ni raccordement de l’abonnement Plus n’a été effectué. Pas de notification téléphone en arrière-plan. Voir [V3](docs/V3.md) pour les périmètres exacts.

@@ -1,10 +1,10 @@
 {
   "name": "mon-coach-scolaire",
-  "version": "2.3.0",
+  "version": "3.0.0",
   "description": "App pour organiser et faire les devoirs",
   "main": "index.js",
   "scripts": {
-    "build": "esbuild src/app.js --bundle --minify --outfile=app.js --target=es2022",
+    "build": "node scripts/build.mjs",
     "test": "npm run build && node --test tests/*.test.js",
     "check": "npm test"
   },
@@ -21,7 +21,8 @@
   },
   "homepage": "https://github.com/kheirmayouf-byte/Mon-coach-scolaire#readme",
   "dependencies": {
-    "@supabase/supabase-js": "2.119.0"
+    "@supabase/supabase-js": "2.119.0",
+    "pdfjs-dist": "6.5.438"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.15",

@@ -7,11 +7,14 @@ export function validateTask(t) {
   return t;
 }
 // A proposal only: daily capacity per child, chunks <=25 min, no work before given.
-export function plan(tasks, capacity=40, start=dateKey(), horizon=14, preferences=[]) {
+export function plan(tasks, capacity=40, start=dateKey(), horizon=14, preferences=[],profiles=[]) {
   const slots=[], unscheduled=[];
+  const priority=t=>Date.parse(t.due+'T12:00:00')-(t.is_assessment?2*86400000:0);
   const used=new Map();
-  for (const t of tasks.filter(t=>!t.done).slice().sort((a,b)=>a.due.localeCompare(b.due)||a.given.localeCompare(b.given)||a.id.localeCompare(b.id))) {
+  for (const t of tasks.filter(t=>!t.done).slice().sort((a,b)=>priority(a)-priority(b)||a.due.localeCompare(b.due)||a.given.localeCompare(b.given)||a.id.localeCompare(b.id))) {
     let remaining=t.minutes||20;
+    const requested=profiles.find(p=>p.child===t.child||p.child_id===t.child)?.settings?.session_minutes;
+    const chunkLimit=Number.isInteger(requested)&&requested>=5&&requested<=25?requested:25;
     for(let day=0; day<horizon && remaining>0; day++) {
       const d=new Date(start+'T12:00:00');d.setDate(d.getDate()+day);const date=dateKey(d);
       if(date<t.given || date>t.due) continue;
@@ -21,7 +24,7 @@ export function plan(tasks, capacity=40, start=dateKey(), horizon=14, preference
         const previous=used.get(key)||0, pause=previous?5:0;
         const available=slot.capacity-previous-pause;
         if(available<=0)break;
-        const minutes=Math.min(25,available,remaining);
+        const minutes=Math.min(chunkLimit,available,remaining);
         slots.push({task:t,date,minutes,label:slot.label,start:slot.start,pause_before:pause});remaining-=minutes;
         used.set(key,previous+pause+minutes);
       }

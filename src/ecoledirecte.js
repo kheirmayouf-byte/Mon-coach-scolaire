@@ -19,10 +19,11 @@ export function prepareEDImport(rows,child,existing,Parser=DOMParser){
   const text=teacherText(row.html,Parser),missing=!text;
   const documents=Array.isArray(row.documents)?row.documents:[];
   const description=(text||'Consigne absente dans ÉcoleDirecte : à compléter.')+(row.hasDocuments?'\n\nPièces jointes à consulter dans ÉcoleDirecte'+(documents.length?' : '+documents.join(', '):'.'):'');
-  const task=validateTask({id:crypto.randomUUID(),child,source_key:key,subject:row.subject,given:row.given,due:row.due,description,minutes:20,done:false,detail_missing:missing,is_assessment:!!row.is_assessment});
+  const task=validateTask({id:crypto.randomUUID(),child,source_key:key,subject:row.subject,given:row.given,due:row.due,description,minutes:20,done:false,attachment_refs:row.attachment_refs||[],detail_missing:missing,is_assessment:!!row.is_assessment});
   const old=existing.find(t=>t.child===child&&t.source_key===key);
+  if(old)task.id=old.id;
   const changed=!!old&&['subject','description','given','due','is_assessment','detail_missing'].some(k=>old[k]!==task[k]);
-  result.push({task,status:old?'existing':'new',changed});
+  result.push({task,status:old?'existing':'new',changed:changed||!!old&&JSON.stringify(old.attachment_refs||[])!==JSON.stringify(task.attachment_refs),expected_version:old?.version});
  }
  return result;
 }
