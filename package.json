@@ -1,6 +1,6 @@
 {
   "name": "mon-coach-scolaire",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "App pour organiser et faire les devoirs",
   "main": "index.js",
   "scripts": {

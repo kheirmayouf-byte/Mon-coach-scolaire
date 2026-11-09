@@ -2,8 +2,9 @@
 
 Application familiale statique, utilisable sur GitHub Pages sans serveur applicatif.
 
-## Version 2.2
+## Version 2.3
 
+- Import ÉcoleDirecte non officiel depuis le compte parent : authentification avec question de sécurité ou TOTP, association manuelle élève/profil, aperçu et import atomique des nouveaux devoirs, sans doublons. Voir [le guide](docs/ECOLEDIRECTE.md).
 - Mode local conservé, reprise des devoirs de la version initiale sans effacer la clé historique.
 - Profils personnalisables sur l’appareil ou dans la base privée. Aucun prénom réel n’est livré dans cette version.
 - Devoirs avec durée, échéance, validation de dates et import texte atomique.
@@ -45,4 +46,4 @@ La branche `backup/pre-v2-2026-11-09` conserve la version initiale. Un retour ar
 
 ## Limites
 
-Les créneaux sont saisis par le parent ; le planning ne récupère pas automatiquement les emplois du temps scolaires ni les vacances. Le mode vacances s’active manuellement. Il ne réserve pas d’heures fixes. Pas encore d’OCR, de traitement des photos dans l’application, d’IA externe, de notification, de connexion École Directe ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.
+Les créneaux sont saisis par le parent ; le planning ne récupère pas automatiquement les emplois du temps scolaires ni les vacances. Le mode vacances s’active manuellement. Il ne réserve pas d’heures fixes. Pas encore d’OCR, de traitement des photos dans l’application, d’IA externe, de notification, de synchronisation ÉcoleDirecte automatique ou de compte enfant indépendant. Les anciens scores du mini-quiz restent dans le stockage historique, conservé intact ; les nouvelles révisions utilisent des fiches saisies par la famille.
