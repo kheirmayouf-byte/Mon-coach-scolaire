@@ -34,3 +34,10 @@ test('initial prototype local tasks preserved without hardcoded names',()=>{
  w.localStorage.setItem('mon-coach-scolaire-v1',JSON.stringify({tasks:[{id:'legacy',child:'legacy-child',subject:'Maths',description:'Exo',given:'2026-11-09',due:'2026-11-10',done:false}],scores:[{score:1}]}));w.eval(bundle());
  assert.equal(JSON.parse(w.localStorage.getItem('mcs-local-v2')).tasks[0].subject,'Maths');assert.ok(w.localStorage.getItem('mon-coach-scolaire-v1'));w.close();
 });
+test('parent login and authorized registration ready without copying configuration',async(t)=>{
+ const dom=boot(),w=dom.window;t.after(()=>w.close());await tick();click(w,'[data-tab=settings]');
+ assert.ok(w.document.getElementById('loginForm'));
+ assert.ok(w.document.getElementById('signupForm'));
+ assert.equal(w.document.getElementById('signup-password').minLength,12);
+ assert.equal(w.document.getElementById('profile').options.length,3);
+});

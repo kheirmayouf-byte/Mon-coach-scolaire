@@ -1,47 +1,55 @@
-# Connexion de la base privée
+# Supabase : état du raccordement
 
-## État de vérification
+## Audit effectué le 9 novembre 2026
 
-Le dépôt initial ne contient ni schéma SQL, ni identifiant de projet, ni configuration Supabase. La base hébergée n’a donc pas été examinée ou modifiée pendant cette livraison. Les tests automatisés valident le nouveau schéma sur PostgreSQL embarqué, et non le projet hébergé.
+Le projet hébergé a été inspecté avant modification : cinq tables initiales, toutes vides, RLS activée, aucun compte Auth et aucun bucket Storage. Trois fonctions SECURITY DEFINER étaient exécutables depuis les rôles clients et les tables disposaient de grants trop larges.
 
-## Ordre des opérations
+Corrections appliquées :
 
-1. Sauvegarder la base initiale et conserver ses politiques avant modification.
-2. Exécuter `supabase/audit.sql` dans le SQL Editor et examiner les résultats : RLS de toutes les tables exposées, grants, fonctions SECURITY DEFINER, vues et buckets publics. Les politiques permissives sont combinées par OR : ajouter une politique restrictive n’annule pas une politique existante ouverte.
-3. Vérifier qu’il n’existe pas déjà de tables `mcs_*`. Appliquer une seule fois `supabase/001_family_security.sql`. En cas de collision, la transaction échoue sans modifier les tables existantes.
-4. Désactiver les inscriptions publiques dans Supabase Auth. Créer ou inviter les comptes parents depuis l’administration. Chaque parent termine personnellement la création de son mot de passe. Ne jamais mettre de mot de passe dans SQL ou Git.
-5. Provisionner un foyer, deux profils et les membres depuis l’administration. Les UUID réels et les prénoms restent exclusivement dans le projet privé.
+- Anciennes tables conservées, accès API navigateur révoqué. Elles restent consultables par l’administration ; aucune donnée initiale n’a été supprimée.
+- Exécution des anciennes fonctions privilégiées révoquée aux rôles PUBLIC, anon et authenticated.
+- Tables `mcs_*` installées : isolation par foyer, memberships administratifs, clés étrangères composites, droits de modification limités et contrôle de version.
+- Index manquants sur les clés étrangères ajoutés.
+- Liste privée d’emails parents autorisés, inaccessible aux clients. Les créations Auth non autorisées sont bloquées par un trigger. Le rattachement au foyer intervient uniquement après confirmation de l’email autorisé.
+- Deux profils créés dans la base privée ; aucun prénom réel ni identifiant de foyer n’est enregistré dans le dépôt.
 
-Exemple conceptuel à adapter **dans la console privée uniquement** :
+L’analyseur Supabase ne remonte plus de WARN ou ERROR de sécurité. Le signal INFO « RLS sans policy » de la liste privée est volontaire : aucune policy et aucun grant client permettent d’y accéder. Les index neufs peuvent être signalés comme inutilisés tant que l’application n’a pas d’activité.
 
-```sql
-begin;
--- Créer un UUID de foyer et le conserver dans la console privée.
-insert into public.mcs_families default values returning id;
--- Puis, avec ce même UUID et ceux des comptes Auth existants :
--- insert into public.mcs_members(user_id,family_id) values (...,...);
--- insert into public.mcs_children(family_id,name) values (...,...),(...,...);
-commit;
-```
+## Configuration de l’application
 
-6. Vérifier les URL Auth autorisées, la confirmation d’email, les fournisseurs et les réglages de session. L’interface utilise la connexion mot de passe, sans redirection OAuth ou lien magique.
-7. Dans l’application, Parents & connexion : URL du projet et clé **publishable** ou ancienne clé **anon**. Jamais `service_role`, clé secrète ou URL de connexion PostgreSQL. Les clés publiques ne confèrent des droits que dans la limite des règles de base.
-8. Se connecter avec un parent autorisé. Les données locales ne sont jamais fusionnées automatiquement. Personnaliser les deux profils privés. Pour copier les devoirs locaux, utiliser les mêmes prénoms dans les deux modes puis lancer une seule copie explicite depuis les paramètres. Les UUID locaux sont conservés pour empêcher une seconde insertion silencieuse. Après une réponse réseau ambiguë, actualiser avant de réessayer.
+`src/public-config.js` contient uniquement l’URL API et une clé **publishable**, destinées au navigateur. Ni service_role, ni secret Auth, ni mot de passe, ni email privé. La configuration est chargée automatiquement. Les paramètres avancés restent disponibles pour changer de projet sur un appareil.
 
-## Tests indispensables dans le projet hébergé
+La connexion parent est prête, mais la liste d’emails autorisés est initialement vide. Le propriétaire doit désigner son email avant toute autorisation. Aucun email n’a été envoyé et aucun compte parent réel n’a été créé pendant cette mise en place.
 
-- Hors connexion : aucune lecture/écriture sur les tables privées.
-- Compte authentifié sans membership : aucun profil ou devoir visible ; aucune auto-attribution de membership possible.
-- Deux foyers de test : ni lecture ni écriture croisée, y compris en appelant directement l’API.
-- Deux parents du même foyer : ajout sur l’appareil A, lecture sur B, complétion sur B puis lecture sur A.
-- Modification concurrente : la deuxième écriture avec une version obsolète ne doit pas écraser la première.
-- Déconnexion : données cloud retirées de la vue et session de cet onglet supprimée.
-- Vérifier aussi les tables **antérieures** et Storage : la migration ne les sécurise pas automatiquement.
+## Première connexion d’un parent
 
-## Modèle de sécurité
+1. Le propriétaire indique explicitement l’email à autoriser. L’administration l’inscrit dans `mcs_private.approved_parents` avec le foyer privé existant. Ne jamais versionner cette opération avec un email ou un UUID réel.
+2. Le parent ouvre l’application, Parents & connexion → Première connexion : créer mon compte parent, puis saisit lui-même son email et son mot de passe (12 caractères minimum).
+3. Il confirme l’email envoyé par Supabase. Si la redirection de confirmation n’est pas encore autorisée dans Auth, il rouvre simplement l’application après confirmation. Pour un parcours fluide, l’administrateur peut régler Site URL et Redirect URLs sur l’URL GitHub Pages de l’application.
+4. Le parent se connecte. Le trigger le rattache automatiquement au foyer après confirmation. Aucun rattachement n’est choisi depuis le navigateur ou via des métadonnées utilisateur.
 
-Seuls les administrateurs provisionnent les foyers et les membres. Les membres ne peuvent consulter que leur propre rattachement. Les tables enfants, devoirs et fiches appliquent une isolation par foyer fondée sur `auth.uid()` ; aucune confiance n’est accordée à des métadonnées utilisateur modifiables. Les clés étrangères composites empêchent de lier un devoir à l’enfant d’un autre foyer. Les grants interdisent de déplacer un devoir ou de changer son propriétaire. La fonction de renommage reste SECURITY INVOKER et respecte les RLS.
+Les paramètres globaux Auth (modèles d’email, URL de redirection, quotas et politiques de mots de passe) n’ont pas été modifiés par le connecteur. L’API Auth conserve son réglage `disable_signup=false`, mais le trigger bloque tout email absent de la liste privée. Ne pas désactiver ce trigger sans remplacer cette protection.
 
-Les sessions Auth sont conservées dans `sessionStorage` et les données cloud seulement en mémoire. Fermer l’onglet ou se déconnecter termine leur conservation locale normale ; une session peut subsister sur d’autres onglets/appareils. Le mode local n’est pas chiffré et reste accessible sur le même profil navigateur. GitHub Pages est un hébergement public du code, pas un coffre pour les données.
+Pour un second parent, le propriétaire doit désigner explicitement l’email à ajouter au même foyer. Retirer une autorisation existante exige de supprimer aussi le membership et révoquer les sessions : retirer seulement l’email de la liste empêche une nouvelle inscription, sans retirer les accès déjà accordés.
 
-Ne pas publier dans une issue ou un commit les résultats contenant identifiants privés, devoirs, prénoms, emails, tokens ou captures familiales.
+## Tests exécutés
+
+- Tests Node, DOM et PostgreSQL embarqué (`npm test`).
+- `supabase/verify_hosted_security.sql` exécuté sur la base hébergée : anon bloqué, compte sans membership bloqué, foyers isolés, lien enfant/foyer contrôlé, écriture concurrente obsolète refusée, propriétaire non modifiable.
+- `supabase/verify_parent_onboarding.sql` : inscription non autorisée refusée, email non confirmé sans accès, rattachement après confirmation et liste privée inaccessible. Le connecteur ne peut pas prendre le rôle supabase_auth_admin ; les tests hébergés passent par le rôle de gestion, complétés par un test local du rôle Auth.
+- Appels HTTPS réels de lecture, avec la clé publique, refusés sur les profils privés et les anciennes tables.
+- Comptes et données de test exclusivement synthétiques, annulés par ROLLBACK. Aucune donnée de test conservée et aucun email envoyé.
+
+À valider après création du vrai compte parent : confirmation email de bout en bout, connexion sur deux appareils, synchronisation A → B → A, expiration de session et test Safari/iPhone.
+
+## Sources SQL
+
+La migration initiale `001_family_security.sql` correspond à `mcs_family_security` dans l’historique hébergé. Les fichiers du dossier migrations conservent les corrections suivantes. Ne pas réappliquer les migrations déjà présentes. Le schéma prototype historique n’a pas de migration initiale dans ce dépôt ; les scripts de durcissement qui le ciblent supposent sa présence.
+
+## Confidentialité
+
+Les sessions Auth utilisent `sessionStorage`. Les données cloud restent en mémoire de l’onglet. Le mode local n’est pas chiffré et reste accessible aux autres utilisateurs du même profil navigateur. Les données locales ne sont envoyées que par la commande de copie explicite. Les espaces enfants restent des vues accompagnées du compte parent.
+
+Ne pas publier dans Git les emails autorisés, UUID de foyer, tokens, devoirs, prénoms, exports ou captures familiales.
+
+Référence des alertes traitées : https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable
