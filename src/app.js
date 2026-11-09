@@ -107,12 +107,12 @@ async function loadCloud(){
  const {data:members,error}=await client.from('mcs_members').select('family_id').eq('user_id',auth.user.id);
  if(error||members?.length!==1)throw Error('Ce compte doit être autorisé dans un seul foyer. Vérifie le rattachement et les règles Supabase.');
  const fid=members[0].family_id;
- const results=await Promise.all(['mcs_children','mcs_tasks','mcs_cards','mcs_planning_preferences','mcs_profiles','mcs_sessions','mcs_attempts','mcs_reminders','mcs_documents','mcs_parent_settings','mcs_import_state','mcs_workspaces'].map(table=>client.from(table).select('*').eq('family_id',fid)));
+ const results=await Promise.all(['mcs_children','mcs_tasks','mcs_cards','mcs_planning_preferences','mcs_profiles','mcs_sessions','mcs_attempts','mcs_reminders','mcs_documents','mcs_parent_settings','mcs_import_state','mcs_workspaces','mcs_agenda_rules'].map(table=>client.from(table).select('*').eq('family_id',fid)));
  const wasCloud=cloud;
  if(results.some(r=>r.error))throw Error('Synchronisation impossible. Vérifie la migration et les permissions Supabase.');
  if(current!==generation)return;
  user=auth.user;family=fid;cloud=true;
- data={children:results[0].data.map(c=>({id:c.id,name:c.name})),tasks:results[1].data.map(t=>({...t,child:t.child_id})),cards:results[2].data.map(c=>({...c,child:c.child_id})),preferences:results[3].data.map(p=>({...p,child:p.child_id})),...Object.fromEntries(['profiles','sessions','attempts','reminders','documents','parent_settings','import_state','workspaces'].map((key,i)=>[key,results[i+4].data.map(r=>({...r,child:r.child_id}))]))};
+ data={children:results[0].data.map(c=>({id:c.id,name:c.name})),tasks:results[1].data.map(t=>({...t,child:t.child_id})),cards:results[2].data.map(c=>({...c,child:c.child_id})),preferences:results[3].data.map(p=>({...p,child:p.child_id})),...Object.fromEntries(['profiles','sessions','attempts','reminders','documents','parent_settings','import_state','workspaces','agenda_rules'].map((key,i)=>[key,results[i+4].data.map(r=>({...r,child:r.child_id}))]))};
  render();
  if(!wasCloud)experience.checkAI();
 }

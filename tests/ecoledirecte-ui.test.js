@@ -24,7 +24,7 @@ test('parent connects, maps a child, previews, imports once and logs out without
  submit(w,'edFetchForm',{student:'10:25',child:'a',from:'2026-11-09',to:'2026-11-22'});await tick();assert.match(w.document.getElementById('content').textContent,/Aperçu pour Élève A/);assert.equal(tasks.length,0);
  submit(w,'edImportForm');await tick();assert.equal(tasks.length,1);assert.equal(tasks[0].child_id,'a');assert.equal(tasks[0].source_key,'ecoledirecte:2026:25:123');
  click(w,'[data-tab=import]');submit(w,'edFetchForm',{student:'10:25',child:'a',from:'2026-11-09',to:'2026-11-22'});await tick();assert.match(w.document.getElementById('content').textContent,/Déjà importé/);assert.equal(w.document.querySelector('[name=item]').disabled,true);
- submit(w,'edImportForm');await tick();assert.equal(tasks.length,1);click(w,'[data-tab=planning]');assert.match(w.document.querySelector('.agenda thead').textContent,/dernier import le/);
+ submit(w,'edImportForm');await tick();assert.equal(tasks.length,1);click(w,'[data-tab=planning]');assert.match(w.document.querySelector('.planning-children').textContent,/dernier import le/);
  assert.equal(JSON.stringify({...w.localStorage,...w.sessionStorage}).includes('private-password'),false);
  click(w,'[data-tab=settings]');click(w,'#logout');await tick();click(w,'[data-tab=import]');assert.equal(w.document.getElementById('edFetchForm'),null);
 });
