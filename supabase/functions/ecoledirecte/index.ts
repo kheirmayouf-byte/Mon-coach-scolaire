@@ -51,7 +51,10 @@ Deno.serve(async(req:Request)=>{
   return reply({...result,session:await envelope.seal(adapter.state,parent.id,expires),expires});
  }catch(error){
   // Never return upstream messages, request bodies, headers or stack traces.
-  if(error instanceof EDProblem)return reply({error:error.message,reset:true},400);
+  if(error instanceof EDProblem){
+   if(error.code==='ED_NO_PROFILES')console.warn(JSON.stringify({event:'mcs_ed_login_shape',code:error.code,shape:error.diagnostic}));
+   return reply({error:error.message,code:error.code,reset:true},400);
+  }
   return reply({error:'Connexion indisponible. Aucun import effectué. Réessaie plus tard.',reset:true},502);
  }
 });

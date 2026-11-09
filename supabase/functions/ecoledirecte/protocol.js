@@ -3,7 +3,9 @@ export const API = 'https://api.ecoledirecte.com/v3/';
 export const VERSION = '4.101.4';
 const flag=value=>value===true||value===1||value==='1'||value==='true';
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
-export class EDProblem extends Error {}
+export class EDProblem extends Error {
+ constructor(message,code='ED_REQUEST',diagnostic){super(message);this.code=code;this.diagnostic=diagnostic;}
+}
 export function decode64(value) {
  try { return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(String(value||'')),c=>c.charCodeAt(0))); }
  catch { throw new EDProblem('Le format des consignes a changé. Aucun devoir importé.'); }
@@ -59,7 +61,8 @@ export class EDClient {
   checkReply(reply);
   this.state.students=extractStudents(reply.data);
   this.state.account=this.state.students.find(s=>s.current)?.account;
-  if(!this.state.token||!this.state.students.length)throw new EDProblem('Aucun profil élève accessible. Utilise un compte parent ou élève.');
+  if(!this.state.token)throw new EDProblem('ÉcoleDirecte n’a pas fourni de session utilisable. Reconnecte-toi.','ED_NO_TOKEN');
+  if(!this.state.students.length)throw new EDProblem('Les profils élèves n’ont pas pu être lus. Référence : ED_NO_PROFILES.','ED_NO_PROFILES',loginShape(reply.data));
   delete this.state.pending;delete this.state.choices;delete this.state.twofa;
   this.state.stage='ready';return {stage:'ready',students:publicStudents(this.state.students)};
  }
@@ -107,13 +110,31 @@ export class EDClient {
   return {stage:'ready',students:publicStudents(this.state.students),rows};
  }
 }
+// Numeric parent account codes are also documented by an independent adapter:
+// https://ed.natchen.fr/doc (account types). Only authenticated linked pupils are accepted.
+function accountType(value){return typeof value==='string'?value.trim().toUpperCase():String(value??'');}
+function numericId(value){
+ if(typeof value==='string'&&!/^[1-9]\d{0,15}$/.test(value))return undefined;
+ if(typeof value!=='string'&&typeof value!=='number')return undefined;
+ const id=Number(value);return Number.isSafeInteger(id)&&id>0?id:undefined;
+}
+export function loginShape(data){
+ const accounts=Array.isArray(data?.accounts)?data.accounts:[];
+ // A fixed list of counts/booleans only: never names, ids, credentials, cookies or tokens.
+ return {accountsArray:Array.isArray(data?.accounts),accountCount:accounts.length,accounts:accounts.slice(0,20).map(a=>{
+  const type=accountType(a?.typeCompte);
+  return {type:['E','F','1','2','P','A','T'].includes(type)?type:'other',validAccountId:numericId(a?.id)!==undefined,pupilsArray:Array.isArray(a?.profile?.eleves),pupilCount:Array.isArray(a?.profile?.eleves)?a.profile.eleves.length:0};
+ })};
+}
 export function extractStudents(data){
  const result=[];
  const accounts=Array.isArray(data?.accounts)?data.accounts:[];
- const current=data?.id??accounts.find(a=>a.main)?.id??accounts[0]?.id;
+ const current=numericId(data?.id??accounts.find(a=>a?.main)?.id??accounts[0]?.id);
  for(const a of accounts){
-  const students=a.typeCompte==='E'?[a]:a.typeCompte==='F'?(a.profile?.eleves||[]):[];
-  for(const s of students){if(!Number.isSafeInteger(s.id))continue;const key=`${a.id}:${s.id}`;if(result.some(r=>r.key===key))continue;result.push({key,id:s.id,account:a.id,idLogin:a.idLogin,current:a.id===current,name:String(s.prenom||s.nom||'Élève').slice(0,100),className:String(s.classe?.libelle||'').slice(0,100)});}
+  const account=numericId(a?.id),type=accountType(a?.typeCompte);
+  if(account===undefined)continue;
+  const students=type==='E'?[a]:['F','1','2'].includes(type)&&Array.isArray(a.profile?.eleves)?a.profile.eleves:[];
+  for(const s of students){const id=numericId(s?.id);if(id===undefined)continue;const key=`${account}:${id}`;if(result.some(r=>r.key===key))continue;result.push({key,id,account,idLogin:numericId(a.idLogin),current:account===current,name:String(s.prenom||s.nom||'Élève').slice(0,100),className:String(s.classe?.libelle||'').slice(0,100)});}
  }
  return result;
 }

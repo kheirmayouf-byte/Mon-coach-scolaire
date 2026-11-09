@@ -50,3 +50,25 @@ test('only parent-linked or own student profiles are selectable',()=>{
  assert.equal(extractStudents({accounts:[{id:1,typeCompte:'P',profile:{eleves:[{id:2}]}}]}).length,0);
  assert.equal(extractStudents({accounts:[{id:1,typeCompte:'E',prenom:'Élève'}]})[0].id,1);
 });
+
+test('numeric parent type codes and numeric-string ids expose only their own linked pupils',async()=>{
+ for(const typeCompte of ['F','1','2',1,2]){
+  const data={accounts:[{id:'10',idLogin:'11',typeCompte,main:true,profile:{eleves:[{id:'25',prenom:'Élève A'},{id:26,prenom:'Élève B'}]}}]};
+  const m=mock([{text:''},{body:{code:200,token:'session-token',data}}]);
+  const c=new EDClient({},m.fetch),result=await c.login('user','secret');
+  assert.equal(result.stage,'ready');assert.deepEqual(result.students.map(s=>s.key),['10:25','10:26']);assert.equal(c.state.account,10);assert.equal(c.state.students[0].idLogin,11);
+ }
+ const unsupported={accounts:[{id:'10',typeCompte:'P',profile:{eleves:[{id:'25'}]}},{id:11,typeCompte:'A',profile:{eleves:[{id:26}]}},{id:12,typeCompte:'T',profile:{eleves:[{id:27}]}}]};
+ assert.deepEqual(extractStudents(unsupported),[]);
+ const malformed={accounts:[{id:10,typeCompte:'F',profile:{eleves:[{id:0},{id:-1},{id:'25bad'},{id:'0x19'},{id:true},{id:'1e3'},{id:'9007199254740992'},{id:'25'}]}}]};
+ assert.deepEqual(extractStudents(malformed).map(s=>s.id),[25]);
+});
+test('missing token and missing pupils are distinct; diagnostics contain no account data',async()=>{
+ const absentToken=mock([{text:''},{body:{code:200,data:students}}]);
+ await assert.rejects(new EDClient({},absentToken.fetch).login('user','secret'),e=>e.code==='ED_NO_TOKEN');
+ const absentProfiles=mock([{text:''},{body:{code:200,token:'sensitive-session',data:{accounts:[{id:10,typeCompte:'P',prenom:'private-name',nom:'private-surname',identifiant:'private-user',profile:{eleves:[{id:25,prenom:'private-child'}]}}]}}}]);
+ await assert.rejects(new EDClient({},absentProfiles.fetch).login('private-user','private-password'),e=>{
+  assert.equal(e.code,'ED_NO_PROFILES');assert.deepEqual(e.diagnostic,{accountsArray:true,accountCount:1,accounts:[{type:'P',validAccountId:true,pupilsArray:true,pupilCount:1}]});
+  assert.doesNotMatch(JSON.stringify(e.diagnostic),/private|password|token|25|10/);return true;
+ });
+});
