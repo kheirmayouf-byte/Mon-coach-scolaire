@@ -1,3 +1,4 @@
+import {desktop,desktopCall} from './desktop.js';
 import {createExperience} from './experience.js';
 import {prepareEDImport} from './ecoledirecte.js';
 import publicConfig from './public-config.js';
@@ -68,7 +69,10 @@ function edView(){
 async function callED(body){
  if(!cloud||profile!=='parents')throw Error('Connecte-toi au compte parent.');
  const current=generation;
- const {data:result,error}=await client.functions.invoke('ecoledirecte',{body:{...body,...(body.action==='login'?{}:{session:ed?.session})}});
+ const payload={...body,...(body.action==='login'?{}:{session:ed?.session})};
+ let result,error;
+ if(desktop()){try{const {data:s}=await client.auth.getSession();result=await desktopCall('ecoledirecte',payload,s.session?.access_token);}catch(e){error={context:{json:async()=>({error:e.message})}};}}
+ else {({data:result,error}=await client.functions.invoke('ecoledirecte',{body:payload}));}
  if(current!==generation||!cloud){clearED();throw Error('La session parent a changé. Reconnecte-toi.');}
  if(error){let message='Connexion ÉcoleDirecte indisponible. Réessaie plus tard.';try{const details=await error.context.json();if(details.error)message=details.error;}catch{}clearED();throw Error(message);}
  if(result?.error){clearED();throw Error(result.error);}
@@ -152,7 +156,7 @@ $('content').addEventListener('submit',e=>{if(experience.ownsForm(e.target)){e.p
  case 'childrenForm':{const changes=data.children.map(c=>({...c,name:String(f.get(c.id)||'').trim()}));if(changes.some(c=>!c.name||c.name.length>50)||new Set(changes.map(c=>c.name.toLowerCase())).size!==changes.length)throw Error('Choisis des prénoms distincts de 1 à 50 caractères.');if(cloud){const {error}=await client.rpc('mcs_rename_children',{names:changes.map(c=>({id:c.id,name:c.name}))});if(error)throw Error('Modification des profils refusée.');await loadCloud();}else{data.children=changes;saveLocal();}notice('Profils enregistrés.');break;}
  case 'capacityForm':data.capacity=Number(f.get('capacity'));saveLocal();notice('Capacité ajustée.');break;
  case 'configForm':{const next=checkConfig({url:f.get('url').trim(),key:f.get('key').trim()});localStorage.setItem(CONFIG,JSON.stringify(next));notice('Configuration enregistrée. Recharge la page pour appliquer le changement.');break;}
- case 'signupForm':{if(String(f.get('password')).length<12||f.get('password')!==f.get('confirm'))throw Error('Choisis au moins 12 caractères et confirme le même mot de passe.');const {error}=await client.auth.signUp({email:f.get('email'),password:f.get('password'),options:{emailRedirectTo:new URL('./',location.href).href}});form.reset();if(error)throw Error('Création impossible. Vérifie que cet email a été autorisé ou réessaie plus tard.');notice('Si ton adresse est autorisée, un email de confirmation a été envoyé. Confirme-le puis reviens sur cette application pour te connecter. Si le lien ouvre une page inaccessible après confirmation, rouvre simplement cette application.');break;}
+ case 'signupForm':{if(String(f.get('password')).length<12||f.get('password')!==f.get('confirm'))throw Error('Choisis au moins 12 caractères et confirme le même mot de passe.');const {error}=await client.auth.signUp({email:f.get('email'),password:f.get('password'),options:{emailRedirectTo:desktop()?'https://kheirmayouf-byte.github.io/Mon-coach-scolaire/':new URL('./',location.href).href}});form.reset();if(error)throw Error('Création impossible. Vérifie que cet email a été autorisé ou réessaie plus tard.');notice('Si ton adresse est autorisée, un email de confirmation a été envoyé. Confirme-le puis reviens sur cette application pour te connecter. Si le lien ouvre une page inaccessible après confirmation, rouvre simplement cette application.');break;}
  case 'loginForm':{const {error}=await client.auth.signInWithPassword({email:f.get('email'),password:f.get('password')});form.reset();if(error)throw Error('Connexion impossible. Vérifie tes identifiants et la connexion.');try{await loadCloud();notice('Connexion réussie. Les données locales restent conservées séparément.');}catch(e){await client.auth.signOut({scope:'local'});throw e;}break;}
  }
  });});
@@ -163,7 +167,7 @@ $('content').addEventListener('click',e=>{const b=e.target.closest('button');if(
  if(b.id==='generatePractice'){practiceQuestions=makePractice(practiceTheme);practiceResult=null;render();return;}
  if(b.id==='export'){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='coach-scolaire-sauvegarde.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
  if(b.id==='sync'){sync();return;}
- if(b.id==='logout'){action(async()=>{clearED();experience.reset();generation++;const {error}=await client.auth.signOut({scope:'local'});if(error)throw Error('Déconnexion impossible. Ferme cet onglet pour effacer la session.');cloud=false;family=null;user=null;data={children:[{id:'child-1',name:'Enfant 1'},{id:'child-2',name:'Enfant 2'}],tasks:[],cards:[]};readLocal();notice('Déconnecté. Retour aux données locales de cet appareil.');});return;}
+ if(b.id==='logout'){action(async()=>{if(desktop())await desktopCall('disconnect');clearED();experience.reset();generation++;const {error}=await client.auth.signOut({scope:'local'});if(error)throw Error('Déconnexion impossible. Ferme cet onglet pour effacer la session.');cloud=false;family=null;user=null;data={children:[{id:'child-1',name:'Enfant 1'},{id:'child-2',name:'Enfant 2'}],tasks:[],cards:[]};readLocal();notice('Déconnecté. Retour aux données locales de cet appareil.');});return;}
  if(b.dataset.delete){if(!confirm('Supprimer ce devoir ? Cette action le retire aussi des appareils synchronisés.'))return;action(async()=>{const t=data.tasks.find(t=>t.id===b.dataset.delete);if(cloud){const {data:rows,error}=await client.from('mcs_tasks').delete().eq('id',t.id).eq('version',t.version).select('id');if(error)throw Error('Suppression non confirmée. Actualise avant de réessayer.');await loadCloud();if(!rows.length)throw Error('Ce devoir a changé sur un autre appareil. Vérifie la version récente.');}else{data.tasks=data.tasks.filter(x=>x.id!==t.id);saveLocal();}notice('Devoir supprimé.');});}
  if(b.dataset.review){const c=data.cards.find(c=>c.id===b.dataset.review),known=b.dataset.known==='yes',level=known?Math.min(4,c.level+1):0;action(async()=>{await updateRow('cards',c,{level,next_review:nextReview(known?c.level:0)});notice('Prochaine révision programmée.');});}
  if(b.id==='migrate'){
@@ -187,6 +191,7 @@ for(const id of ['identity','sessionDock','coachPanel','modalHost']){
 }
 $('coachQuestion')?.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();experience.click({dataset:{x:'ask'}});}});
 readLocal();saveLocal();render();
+if(desktop())void experience.checkAI().then(()=>render());
 try{const c=JSON.parse(localStorage.getItem(CONFIG)||'null')||publicConfig;if(c){setupClient(c);client.auth.getSession().then(async({data:s})=>{if(s.session)await action(async()=>{try{await loadCloud();}catch(e){await client.auth.signOut({scope:'local'});throw e;}});sessionReady=true;render();});}}catch{notice('Configuration invalide. Renseigne une clé publique dans Parents & connexion.');}
 setInterval(()=>{if(document.visibilityState==='visible')sync();},30000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync();});

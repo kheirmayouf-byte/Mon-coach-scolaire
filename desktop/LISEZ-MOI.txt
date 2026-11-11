@@ -1,0 +1,49 @@
+MON COACH SCOLAIRE — VERSION ORDINATEUR 3.3.0
+Version de test pour Windows 10/11, 64 bits
+
+1. Extrais TOUT le fichier ZIP dans un dossier de ton ordinateur.
+2. Dans ce dossier, ouvre « Mon Coach Scolaire.exe ».
+3. Dans « Parents & connexion », connecte ton compte parent habituel
+   pour retrouver les devoirs et les documents du foyer.
+4. Dans « Mon abonnement ChatGPT », clique « Continuer avec ChatGPT ».
+   Ton navigateur habituel s’ouvre sur OpenAI. Choisis ton compte Plus
+   et autorise explicitement l’utilisation de ton abonnement.
+5. Reviens dans l’application puis clique « Tester la connexion ».
+   Une réponse complète confirme l’accès pour ton compte.
+
+Aucune clé API à créer. Aucun achat de crédits. Aucun relais payant
+si ta limite d’abonnement est atteinte. « Gérer mon utilisation »
+ouvre le suivi ChatGPT. L’éligibilité reste à confirmer par le test.
+
+AVANT LES DEMANDES CONCERNANT UN ENFANT
+Dans Parents & connexion, vérifie la fiche pédagogique de chaque
+enfant et coche « J’ai vérifié ces consignes pour cet enfant ».
+Les projets Prof Noor et Prof Bettina ne sont pas automatiquement lus.
+Colle leurs consignes utiles dans la fiche du bon enfant.
+Pour les quiz, ajoute le cours dans Documents, vérifie son texte,
+puis valide « J’ai vérifié ce texte avec l’original ».
+Sélectionne l’enfant ou ouvre son devoir avant de poser ta question.
+
+Cette version répond aux questions écrites et propose des quiz QCM
+depuis les supports vérifiés. Les PDF contenant du texte sont lus
+sur l’appareil. Pour un scan ou une photo, complète le texte dans
+Documents. La transcription automatique et la dictée vocale ne sont
+pas incluses dans cette première version. La lecture orale dépend
+des voix disponibles sur Windows.
+
+Les accès ChatGPT restent sur cet ordinateur, chiffrés par Windows.
+Seuls les contenus nécessaires à ta demande sont transmis à OpenAI.
+Le compte parent et le compte ChatGPT sont deux connexions distinctes.
+Déconnecter le compte parent déconnecte aussi ChatGPT dans l’application.
+Le site web et l’iPhone gardent leurs fonctions habituelles ; ce moteur
+ChatGPT fonctionne uniquement dans cette version ordinateur locale.
+
+Cette version de test n’a pas de signature d’éditeur Windows.
+Si Windows empêche l’ouverture, relève le message affiché : ne
+désactive pas les protections de ton ordinateur pour l’exécuter.
+La connexion réelle avec ton compte et le lancement sous Windows
+restent à valider sur ton ordinateur.
+
+Code source : https://github.com/kheirmayouf-byte/Mon-coach-scolaire
+Usage familial non commercial. Notices dans resources/app.asar,
+build/siwc-notices ; licences Electron dans le dossier principal.

@@ -1,0 +1,10 @@
+import {build} from 'esbuild';
+import {mkdir, copyFile, rm} from 'node:fs/promises';
+await mkdir('build',{recursive:true});
+await build({entryPoints:['main.mjs'],bundle:true,outfile:'build/main.cjs',platform:'node',format:'cjs',target:'node22',packages:'external'});
+await copyFile('preload.cjs','build/preload.cjs');
+await mkdir('web',{recursive:true});
+for(const file of ['index.html','app.js','style.css','pdf.worker.min.mjs'])await copyFile('../'+file,'web/'+file);
+await rm('build/siwc-notices',{recursive:true,force:true});
+await mkdir('build/siwc-notices',{recursive:true});
+for(const file of ['LICENSE','THIRD_PARTY_NOTICES.md','dependency-inventory.json','PROVENANCE.md'])await copyFile('vendor/siwc/'+file,'build/siwc-notices/'+file);

@@ -1,0 +1,25 @@
+{
+  "name": "mon-coach-scolaire-desktop",
+  "version": "3.3.0",
+  "private": true,
+  "type": "module",
+  "main": "build/main.cjs",
+  "description": "Version familiale locale de Mon Coach Scolaire avec connexion ChatGPT",
+  "license": "ISC",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "npm run build && electron .",
+    "test": "node build-sdk-tests.mjs && node --test tests/*.test.mjs vendor/siwc/test/*.test.mjs",
+    "package:windows": "npm run build && node package-windows.mjs"
+  },
+  "dependencies": {
+    "jose": "6.2.17",
+    "openai": "7.55.0",
+    "proper-lockfile": "4.1.2"
+  },
+  "devDependencies": {
+    "electron": "45.3.0",
+    "esbuild": "0.28.2",
+    "@electron/packager": "19.0.2"
+  }
+}

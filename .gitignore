@@ -5,3 +5,10 @@ node_modules/
 test-results/
 
 supabase/.temp/
+
+desktop/build/
+desktop/web/
+desktop/release/
+chatgpt-auth*.json
+chatgpt-host*.json
+desktop/vendor/siwc/dist/
