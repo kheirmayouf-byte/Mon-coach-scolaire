@@ -1,10 +1,10 @@
-Version Windows de Mon Coach Scolaire avec connexion à un abonnement ChatGPT éligible.
+Version 3.4.2 de Mon Coach Scolaire : connexion ChatGPT dans l’application Windows et depuis le site en ligne sur le même ordinateur.
 
-1. Télécharge et extrais tout le ZIP.
-2. Ouvre Mon Coach Scolaire.exe.
-3. Dans Mon compte, connecte ton compte parent puis clique sur Continuer avec ChatGPT.
-4. Autorise la connexion dans le navigateur, reviens dans l’application et choisis Tester la connexion.
+1. Ferme une ancienne version de l’application. Télécharge et extrais tout le ZIP, puis ouvre Mon Coach Scolaire.exe.
+2. Pour travailler dans le navigateur, garde l’application Windows ouverte puis ouvre Mon compte → Mon IA → Continuer avec ChatGPT sur le site.
+3. Valide le rattachement du compte parent dans la fenêtre Windows, puis la connexion ChatGPT si demandée. Le navigateur peut aussi demander l’autorisation d’accès local.
+4. Reviens sur le site et choisis Tester la connexion.
 
-La connexion ChatGPT est conservée chiffrée sur cet ordinateur. Le site web et l’iPhone ne reprennent pas cette connexion. Aucun relais automatique par une API payante.
+Les accès ChatGPT restent chiffrés sur cet ordinateur. Aucun relais automatique vers une API payante. Ce relais n’est pas accessible depuis l’iPhone, l’iPad ou un autre ordinateur.
 
 Paquet Windows 64 bits non signé. Le fichier SHA256SUMS.txt permet de vérifier l’intégrité du téléchargement. Ne désactive pas les protections Windows pour l’ouvrir.

@@ -1,4 +1,4 @@
-MON COACH SCOLAIRE — VERSION ORDINATEUR 3.4.1
+MON COACH SCOLAIRE — VERSION ORDINATEUR 3.4.2
 Version de test pour Windows 10/11, 64 bits
 
 1. Extrais TOUT le fichier ZIP dans un dossier de ton ordinateur.
@@ -38,8 +38,10 @@ Seuls les contenus nécessaires à ta demande sont transmis à OpenAI.
 Le compte parent et le compte ChatGPT sont deux connexions distinctes.
 La connexion ChatGPT est conservée sur cet ordinateur. Pour la retirer,
 utilise explicitement Déconnecter ChatGPT dans Mon compte.
-Le site web et l’iPhone gardent leurs fonctions habituelles ; ce moteur
-ChatGPT fonctionne uniquement dans cette version ordinateur locale.
+Le site web peut désormais utiliser ce moteur sur le même ordinateur,
+à condition de garder cette application ouverte et de valider le
+rattachement dans Mon compte sur le site. L’iPhone et l’iPad ne peuvent
+pas joindre ce relais local.
 
 Cette version de test n’a pas de signature d’éditeur Windows.
 Si Windows empêche l’ouverture, relève le message affiché : ne
@@ -61,3 +63,11 @@ fermeture avec reprise, réponses sauvegardées et annulation sans bilan.
 Les devoirs dont la date est dépassée passent automatiquement à Fait.
 Emploi du temps affiche les cours importés et les pastilles de devoirs.
 Le chat reste accessible grâce au bouton Ton coach en bas à droite.
+
+CONNEXION DE LA VERSION EN LIGNE 3.4.2
+Ferme une ancienne version Windows avant d’ouvrir celle-ci.
+Garde l’application ouverte. Sur le site, connecte le compte parent
+puis choisis Mon compte > Mon IA > Continuer avec ChatGPT.
+Autorise le rattachement dans la fenêtre Windows et l’accès local du
+navigateur s’il le demande. Les demandes IA se font ensuite dans le site.
+Le bouton Retirer le lien avec la version en ligne supprime ce rattachement.

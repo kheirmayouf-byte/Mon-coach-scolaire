@@ -1,16 +1,18 @@
-import {app, BrowserWindow, ipcMain, protocol, net, safeStorage, shell, session} from 'electron';
+import {app, BrowserWindow, ipcMain, protocol, net, safeStorage, shell, session, dialog} from 'electron';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createChatGPT} from './vendor/siwc/src/index.ts';
 import {credentialEncryption} from './encryption.mjs';
 import {createCoach} from './coach.mjs';
 import {createDictation} from './dictation.mjs';
+import {verifyParent as verifyBrowserParentWithConfig,createPairStore,startBrowserRelay} from './browser-relay.mjs';
 import publicConfig from '../src/public-config.js';
 
 protocol.registerSchemesAsPrivileged([{scheme:'mcs', privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 const base = 'mcs://app/index.html';
+const verifyBrowserParent=token=>verifyBrowserParentWithConfig(token,publicConfig);
 const assets = new Set(['index.html','app.js','style.css','pdf.worker.min.mjs']);
-let window, chatgpt;
+let window, chatgpt, browserRelay;
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on('second-instance', () => {window?.show();window?.focus();});
@@ -26,6 +28,7 @@ else {
     });
     const coach = createCoach(chatgpt);
     const dictation=createDictation();
+    const browserPairs=createPairStore(join(app.getPath('userData'),'browser-parent.enc'),credentialEncryption(safeStorage));
     const allowed = event => event.sender === window?.webContents && event.senderFrame === event.sender.mainFrame && event.senderFrame.url === base;
     const errors = error => {
       // Do not forward upstream error bodies, request objects or submitted data.
@@ -42,6 +45,7 @@ else {
     });}
     handle('dictate',()=>dictation.listen());
     handle('cancel-dictation',()=>dictation.cancel());
+    handle('web-unlink',()=>browserPairs.set(null).then(()=>({removed:true})));
     handle('status',()=>coach.status());
     handle('connect',async()=>{await chatgpt.signIn({reconsent:true});return coach.status();});
     handle('cancel',()=>chatgpt.cancelSignIn());
@@ -67,7 +71,17 @@ else {
     window.webContents.session.setPermissionCheckHandler((web,permission,origin,details)=>web===window.webContents&&web.getURL()===base&&permission==='media'&&details.mediaType==='audio');
     session.defaultSession.on('will-download',(_event,item)=>{item.setSaveDialogOptions({title:'Enregistrer le document'});});
     await window.loadURL(base);
+    try{
+     browserRelay=await startBrowserRelay({
+      coach:{...coach,status:async()=>({...await coach.status(),binding:(await chatgpt.getSession()).profileId||''})},
+      pairs:browserPairs,
+      verify:token=>verifyBrowserParent(token),
+      approve:async parent=>{window.show();window.focus();const result=await dialog.showMessageBox(window,{type:'question',title:'Relier la version en ligne',message:'Autoriser le site Mon Coach Scolaire à utiliser la connexion ChatGPT de cet ordinateur ?',detail:'Compte parent : '+parent.email+'\nSeul le site kheirmayouf-byte.github.io sera accepté. Les jetons ChatGPT restent chiffrés sur cet ordinateur. Tu pourras retirer ce lien dans Mon compte.',buttons:['Refuser','Autoriser'],defaultId:0,cancelId:0,noLink:true});return result.response===1;},
+      connect:async()=>{await chatgpt.signIn({reconsent:true});return {...await coach.status(),binding:(await chatgpt.getSession()).profileId||''};},
+      cancel:()=>chatgpt.cancelSignIn(),models:()=>chatgpt.listModels(),usage:()=>shell.openExternal('https://chatgpt.com/settings/usage'),errors,
+     });
+    }catch{await dialog.showMessageBox(window,{type:'warning',title:'Relais de la version en ligne indisponible',message:'La connexion ChatGPT reste disponible dans cette application. Le relais du navigateur n’a pas pu démarrer ; ferme une autre instance éventuelle puis relance l’application.'});}
   }).catch(()=>{console.error('Démarrage impossible. Réinstalle la version ordinateur.');app.quit();});
   app.on('window-all-closed',()=>app.quit());
-  app.on('before-quit',()=>chatgpt?.cancelSignIn());
+  app.on('before-quit',()=>{browserRelay?.close();chatgpt?.cancelSignIn();});
 }

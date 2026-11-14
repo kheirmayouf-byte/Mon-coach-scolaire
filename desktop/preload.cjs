@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('coachDesktop', Object.freeze({
   dictate: () => ipcRenderer.invoke('mcs:dictate'),
   cancelDictation: () => ipcRenderer.invoke('mcs:cancel-dictation'),
+  unlinkBrowser: () => ipcRenderer.invoke('mcs:web-unlink'),
   status: () => ipcRenderer.invoke('mcs:status'),
   connect: () => ipcRenderer.invoke('mcs:connect'),
   cancel: () => ipcRenderer.invoke('mcs:cancel'),

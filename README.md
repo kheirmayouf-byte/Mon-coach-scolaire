@@ -1,3 +1,7 @@
+## Version 3.4.2 — connexion IA dans le site
+
+Le site peut utiliser l’abonnement ChatGPT par le relais Windows du même ordinateur. Le client Windows doit rester ouvert. Le site fournit les boutons Continuer avec ChatGPT, Tester la connexion et le modèle du compte. Voir [le fonctionnement et les vérifications](docs/V3.4.2.md).
+
 ## Correctif 3.4.1
 
 Le panneau Mon IA ne présente plus de sélecteur sans action. Le site propose le téléchargement Windows et les étapes de connexion. Dans le client Windows, le bouton Continuer avec ChatGPT lance la connexion existante. Le site hébergé ne reprend pas l’abonnement ChatGPT du client local.
