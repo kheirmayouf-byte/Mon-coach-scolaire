@@ -1,3 +1,7 @@
+## Version 3.4.4 — planning finalisé
+
+Validation directe, consigne dépliable et cartes lisibles sur ordinateur et téléphone. Les quatre actions restent accessibles dans chaque carte. Voir [les changements et vérifications](docs/V3.4.4.md).
+
 ## Version 3.4.3 — autorisations du relais limitées à une demande
 
 Le site se connecte au même abonnement ChatGPT via le relais local Windows. La session parent reste côté Supabase ; seules des preuves signées, brèves et liées à chaque demande circulent vers le relais. Voir [le parcours et ses limites](docs/V3.4.3.md).

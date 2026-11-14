@@ -73,3 +73,31 @@ test('compact planning cards keep four actions visible and expand the full instr
 test('done from planning completes the whole task, removes all its sessions and can be undone there',async(t)=>{
  const data=seed();data.tasks[0].minutes=50;const {dom,w}=boot(data);t.after(()=>dom.window.close());click(w,'[data-tab=planning]');assert.ok(w.document.querySelectorAll('[data-child=a].session-card').length>1);click(w,'[data-x=agenda-done][data-id=ta]');await tick();assert.equal(saved(w).tasks.find(t=>t.id==='ta').done,true);assert.equal(saved(w).tasks.find(t=>t.id==='tb').done,false);assert.equal(w.document.querySelectorAll('[data-child=a].session-card').length,0);assert.ok(w.document.querySelector('.work-agenda'));assert.match(w.document.getElementById('modalHost').textContent,/Devoir terminé/);click(w,'[data-x=undo-complete]');await tick();assert.equal(saved(w).tasks.find(t=>t.id==='ta').done,false);assert.ok(w.document.querySelectorAll('[data-child=a].session-card').length>1);assert.ok(w.document.querySelector('.work-agenda'));
 });
+
+test('planning summary handles blank lines and keeps the full teacher text inert in the detail',async(t)=>{
+ const data=seed();data.tasks[0].description='\n\nRelire la leçon.\nFaire les exercices avec les étapes de calcul.\n<img src=x onerror=alert(1)> Puis vérifier les résultats.';
+ const {dom,w}=boot(data);t.after(()=>dom.window.close());click(w,'[data-tab=planning]');
+ const card=w.document.querySelector('[data-session="ta:0"]'),summary=card.querySelector('.session-title-short');
+ assert.match(summary.textContent,/^Relire la leçon\. Faire les exercices/);assert.ok(summary.textContent.length<=72);
+ assert.equal(card.querySelector('[data-agenda-detail]').hidden,true);click(w,'[data-session="ta:0"] [data-x=session-detail]');
+ assert.equal(card.querySelector('.consigne').textContent,data.tasks[0].description);assert.equal(card.querySelector('img'),null);
+ for(const button of card.querySelectorAll('.session-actions button'))assert.match(button.getAttribute('aria-label'),/Sciences · Enfant A/);
+});
+
+test('completion from planning updates family progress and persists without inventing study time',async(t)=>{
+ const data=seed();data.tasks[0].minutes=50;const {dom,w}=boot(data);t.after(()=>dom.window.close());
+ click(w,'[data-tab=planning]');click(w,'[data-x=agenda-done][data-id=ta]');await tick();click(w,'[data-x=close]');click(w,'[data-tab=dashboard]');
+ assert.match(w.document.getElementById('content').textContent,/83 % du travail prévu terminé/);
+ assert.match(w.document.getElementById('content').textContent,/1 devoir\(s\) terminé\(s\) sur 2/);assert.equal(saved(w).sessions,undefined);
+ const reload=boot(saved(w));t.after(()=>reload.dom.window.close());click(reload.w,'[data-tab=planning]');
+ assert.equal(reload.w.document.querySelector('[data-session="ta:0"]'),null);assert.ok(reload.w.document.querySelector('[data-session="tb:0"]'));
+ click(reload.w,'[data-tab=tasks]');click(reload.w,'[data-x=status-filter][data-id=done]');assert.ok(reload.w.document.querySelector('[data-check=ta]:checked'));
+});
+
+test('switching from a filtered parent planning to the sibling keeps actions bound to that child',async(t)=>{
+ const {dom,w}=boot();t.after(()=>dom.window.close());click(w,'[data-x=filter][data-id=a]');click(w,'[data-tab=planning]');
+ const select=w.document.getElementById('profile');select.value='b';select.dispatchEvent(new w.Event('change'));
+ assert.equal(w.document.querySelector('[data-session="ta:0"]'),null);assert.ok(w.document.querySelector('[data-session="tb:0"]'));
+ click(w,'[data-x=agenda-done][data-id=tb]');await tick();assert.equal(saved(w).tasks[0].done,false);assert.equal(saved(w).tasks[1].done,true);
+ click(w,'[data-x=undo-complete]');await tick();assert.equal(saved(w).tasks[1].done,false);assert.ok(w.document.querySelector('[data-session="tb:0"]'));
+});
