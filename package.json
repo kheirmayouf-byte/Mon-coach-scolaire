@@ -1,7 +1,7 @@
 {
   "name": "mon-coach-scolaire",
   "version": "3.4.5",
-  "description": "App pour organiser et faire les devoirs",
+  "description": "Application familiale de suivi scolaire avec lecture locale des documents",
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build.mjs",
