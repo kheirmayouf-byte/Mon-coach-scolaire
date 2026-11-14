@@ -14,12 +14,12 @@ export async function inspectFile(file){
 import {createLocalOCR,prepareImage} from './ocr.js';
 export const MAX_DOCUMENT_PAGES=20,MAX_DOCUMENT_TEXT=60000;
 export async function extractFileText(file,mime,options={}){
- const {onProgress=()=>{},signal,loadPDF=()=>import('pdfjs-dist/legacy/build/pdf.mjs'),createOCR=createLocalOCR,imageForOCR=prepareImage,canvasFactory=()=>document.createElement('canvas')}=options;
+ const {onProgress=()=>{},onWarning=()=>{},signal,loadPDF=()=>import('pdfjs-dist/legacy/build/pdf.mjs'),createOCR=createLocalOCR,imageForOCR=prepareImage,canvasFactory=()=>document.createElement('canvas')}=options;
  let reader,loading,doc,destroyPromise;
  const destroyPDF=()=>destroyPromise??=loading.destroy();
  const check=()=>{if(signal?.aborted)throw Error('Lecture annulée. Le fichier original reste disponible.');};
  const bounded=value=>{if(value.length>MAX_DOCUMENT_TEXT)throw Error('Ce document dépasse 60 000 caractères. Ajoute-le en plusieurs parties pour éviter une lecture incomplète.');return value;};
- const recognize=async(image)=>{check();reader??=await createOCR({signal,onProgress});const text=await reader.recognize(image);check();if(!text.trim())throw Error('Aucun texte lisible détecté. Reprends une photo nette, bien éclairée et cadrée sur une page. Les manuscrits et schémas peuvent nécessiter une correction.');return text;};
+ const recognize=async(image)=>{check();reader??=await createOCR({signal,onProgress,onWarning});const text=await reader.recognize(image);check();if(!text.trim())throw Error('Aucun texte lisible détecté. Reprends une photo nette, bien éclairée et cadrée sur une page. Les manuscrits et schémas peuvent nécessiter une correction.');return text;};
  try{
   check();
   if(mime==='text/plain')return bounded((await file.text()).trim());

@@ -85,14 +85,14 @@ export function createExperience(api){
  function parentName(){return (d().parent_settings||[]).find(p=>p.user_id===api.user()?.id)?.display_name||api.user()?.user_metadata?.display_name||api.user()?.user_metadata?.given_name||'';}
  function documentForm(){return `<section class="panel" id="documentUpload"><h2>Ajouter un cours ou un exercice</h2><form data-xform="upload"><label>Enfant<select name="child" required>${childOptions(true,documentTarget?.child||'')}</select></label><label>Matière<input name="subject" maxlength="80" value="${esc(documentTarget?.subject||'')}"></label><label>Associer à un devoir (facultatif)<select name="task_id"><option value="">Cours général</option>${rows('tasks').map(t=>`<option value="${esc(t.id)}" ${documentTarget?.id===t.id?'selected':''}>${esc(name(t.child))} · ${esc(t.subject)} · ${esc(t.due)}</option>`).join('')}</select></label><div class="actions"><label class="file-button">${fileLabel()}<input type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/webp,text/plain"></label></div><p class="small muted">${mobile()?'Sur téléphone, le sélecteur propose la photothèque, les fichiers et, selon le navigateur, l’appareil photo. Sur ordinateur, choisis un fichier.':'Sur ordinateur, choisis un fichier. Une photo peut être ajoutée depuis le téléphone d’un parent connecté au même compte.'} PDF, images ou texte · 10 Mo maximum. Le texte des PDF, scans et photos est récupéré automatiquement sur ton appareil, sans connexion IA. PDF de 20 pages maximum. Relis le résultat puis valide-le ; inutile de le recopier. Les manuscrits, formules et schémas peuvent être mal reconnus.</p><button type="submit">Enregistrer le document</button></form></section>`;}
  function documentsView(){return `${filterView()}${documentForm()}<section class="panel"><h2>Mes documents</h2>${rows('documents').map(doc=>`<details class="doc-card" data-document="${esc(doc.id)}" ${!doc.verified?'open':''}><summary>${esc(doc.name)} <span class="pill">${esc(name(doc.child))} · ${doc.verified?'Texte vérifié':'À compléter / vérifier'}</span></summary><p>${esc(doc.subject)} · ${Math.ceil(doc.bytes/1024)} Ko</p>${doc.task_id?`<button data-x="work-open" data-id="${esc(doc.task_id)}" class="secondary">Retour à l’exercice dans l’application</button>`:''}<p class="small muted">${doc.content_text?'Le texte est prêt : compare-le à l’original, corrige les éventuelles erreurs puis coche la confirmation.':'Le texte n’a pas encore été récupéré. Clique sur Lire automatiquement ; aucun copier-coller n’est nécessaire.'}</p>${documentReadErrors.has(doc.id)?'<p class="danger" role="status">'+esc(documentReadErrors.get(doc.id))+'</p>':''}<div class="actions"><button data-x="read-doc" data-id="${esc(doc.id)}">${doc.content_text?'Relire automatiquement':'Lire automatiquement le document'}</button><button data-x="preview-doc" data-id="${esc(doc.id)}" class="secondary">Comparer avec l’original</button><button data-x="open-doc" data-id="${esc(doc.id)}" class="secondary">Télécharger l’original</button>${aiReady&&!desktop()&&!browserConnected?`<button data-x="analyze-doc" data-id="${esc(doc.id)}" class="secondary">Extraire le texte avec l’IA</button>`:''}<button data-x="delete-doc" data-id="${esc(doc.id)}" class="secondary">Supprimer</button></div>${documentPreviews.has(doc.id)?'<figure class="document-preview"><img src="'+esc(documentPreviews.get(doc.id))+'" alt="Document original à comparer au texte reconnu"><figcaption>Original · zoome si nécessaire pour comparer.</figcaption></figure>':''}<form data-xform="document-text" data-id="${esc(doc.id)}"><label>Texte récupéré automatiquement · corrige seulement les erreurs<textarea name="content_text" maxlength="60000">${esc(documentDrafts.get(doc.id)??doc.content_text)}</textarea></label><label><input class="inline-check" type="checkbox" name="verified" ${doc.verified?'checked':''}>J’ai relu ce texte et il correspond au document</label><button type="submit">${doc.verified?'Enregistrer les modifications':'Enregistrer la relecture'}</button></form></details>`).join('')||'<p>Aucun document dans cette sélection.</p>'}</section>`;}
- async function readDocument(file,mime){
+ async function readDocument(file,mime,onWarning=()=>{}){
   const controller=new AbortController();documentReadController=controller;
   const pane=document.createElement('section');pane.className='document-reading';pane.setAttribute('aria-label','Lecture automatique du document');
   const label=document.createElement('p');label.setAttribute('role','status');label.setAttribute('aria-live','polite');label.textContent='Lecture automatique sur cet appareil…';
   const hint=document.createElement('p');hint.textContent='La première lecture charge le moteur. Les photos et scans peuvent prendre quelques instants.';
   const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Annuler la lecture';cancel.addEventListener('click',e=>{e.stopPropagation();controller.abort();cancel.disabled=true;label.textContent='Arrêt de la lecture…';});
   pane.append(label,hint,cancel);document.body.append(pane);
-  try{return await extractFileText(file,mime,{signal:controller.signal,onProgress:message=>{label.textContent=message;}});}
+  try{return await extractFileText(file,mime,{signal:controller.signal,onWarning,onProgress:message=>{label.textContent=message;}});}
   finally{pane.remove();if(documentReadController===controller)documentReadController=null;}
  }
  async function documentFile(doc){
@@ -112,9 +112,9 @@ export function createExperience(api){
   if(!target.child||!d().children.some(c=>c.id===target.child)||me()!=='parents'&&target.child!==me())throw Error('Choisis le bon enfant.');
   if(target.task_id&&!d().tasks.some(t=>t.id===target.task_id&&t.child===target.child))throw Error('Le devoir choisi ne correspond pas à cet enfant.');
   if(sourceKey&&(d().documents||[]).some(x=>x.child===target.child&&x.source_key===sourceKey))return;
-  const {mime}=await inspectFile(file),id=crypto.randomUUID(),path=`${api.family()}/${target.child}/${id}`;let text='',readingError='';
-  try{text=await readDocument(file,mime);}catch(e){readingError=e.message;}
-  if(readingError)documentReadErrors.set(id,readingError);
+  const {mime}=await inspectFile(file),id=crypto.randomUUID(),path=`${api.family()}/${target.child}/${id}`;let text='',readingError='',readingWarning='';
+  try{text=await readDocument(file,mime,message=>{readingWarning=message;});}catch(e){readingError=e.message;}
+  if(readingError||readingWarning)documentReadErrors.set(id,readingError||readingWarning);
   const {error}=await api.client().storage.from('mcs-documents').upload(path,file,{contentType:mime,upsert:false});if(error)throw Error('Le document n’a pas été enregistré. Vérifie le format et la connexion.');
   try{await api.insertRows('documents',[{id,child:target.child,task_id:target.task_id||null,name:file.name.slice(0,200),subject:target.subject||'',mime,bytes:file.size,object_path:path,content_text:text,verified:false,status:text?'needs_review':'uploaded',source_key:sourceKey}]);}
   catch(e){await api.client().storage.from('mcs-documents').remove([path]);throw e;}
@@ -365,10 +365,11 @@ export function createExperience(api){
    const doc=d().documents.find(x=>x.id===id);if(!doc)throw Error('Document indisponible.');
    if((doc.content_text||documentDrafts.get(id))&&!confirm('Relire le fichier et remplacer le texte enregistré et les corrections en cours ? Le document devra être vérifié de nouveau.'))return true;
    void api.action(async()=>{try{
-    const file=await documentFile(doc),{mime}=await inspectFile(file),text=await readDocument(file,mime);
+    let readingWarning='';
+    const file=await documentFile(doc),{mime}=await inspectFile(file),text=await readDocument(file,mime,message=>{readingWarning=message;});
     if(!text.trim())throw Error('Aucun texte lisible détecté. Le texte précédent a été conservé.');
     await api.updateRow('documents',doc,{content_text:text,verified:false,status:'needs_review'});
-    documentDrafts.delete(id);documentReadErrors.delete(id);previewDocument(doc,file);api.notice('Texte récupéré. Relis-le puis confirme la relecture.');
+    documentDrafts.delete(id);documentReadErrors.delete(id);if(readingWarning)documentReadErrors.set(id,readingWarning);previewDocument(doc,file);api.notice('Texte récupéré. Relis-le puis confirme la relecture.');
    }catch(e){documentReadErrors.set(id,e.message);throw e;}});return true;
   }
   if(kind==='verify-doc'){api.changeTab('documents');const doc=document.querySelector('[data-document="'+id.replace(/[^a-zA-Z0-9_-]/g,'')+'"]');if(doc){doc.open=true;doc.querySelector('textarea')?.focus();doc.scrollIntoView?.({block:'center'});}return true;}

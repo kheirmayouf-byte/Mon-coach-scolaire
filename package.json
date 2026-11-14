@@ -1,6 +1,6 @@
 {
   "name": "mon-coach-scolaire",
-  "version": "3.4.5",
+  "version": "3.4.6",
   "description": "Application familiale de suivi scolaire avec lecture locale des documents",
   "main": "index.js",
   "scripts": {

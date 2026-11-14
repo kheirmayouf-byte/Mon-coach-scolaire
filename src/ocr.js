@@ -1,3 +1,5 @@
+import {enhanceDocumentImage} from './ocr-image.js';
+import {readableOCR} from './ocr-text.js';
 // Images stay on the device. Only same-origin OCR engine assets are fetched.
 export function ocrAssetURLs(base=globalThis.location?.href){
  const root=new URL('./ocr/',base);
@@ -16,7 +18,7 @@ export async function prepareImage(file){
   ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0,canvas.width,canvas.height);return canvas;
  }finally{image?.close?.();if(url)URL.revokeObjectURL(url);}
 }
-export async function createLocalOCR({signal,onProgress=()=>{},load=()=>import('tesseract.js'),timeout=180000,baseURL=globalThis.location?.href}={}){
+export async function createLocalOCR({signal,onProgress=()=>{},onWarning=()=>{},processImage=enhanceDocumentImage,load=()=>import('tesseract.js'),timeout=180000,baseURL=globalThis.location?.href}={}){
  let worker,closed=false,timer,rejectStop;
  const stopped=new Promise((_,reject)=>{rejectStop=reject;});
  const cancel=()=>rejectStop(Error('Lecture annulée. Le fichier original reste disponible.'));
@@ -27,6 +29,13 @@ export async function createLocalOCR({signal,onProgress=()=>{},load=()=>import('
   if(signal?.aborted)cancel();
   const pending=(async()=>{const {createWorker}=await load();const w=await createWorker('fra',1,{...ocrAssetURLs(baseURL),logger:m=>onProgress(m.status==='recognizing text'?'Lecture du texte : '+Math.round(m.progress*100)+' %':'Préparation de la lecture…'),errorHandler:()=>rejectStop(Error('Le moteur de lecture n’a pas pu démarrer. Vérifie la connexion et réessaie.'))});if(closed){await w.terminate();throw Error('Lecture arrêtée.');}worker=w;return w;})();
   await Promise.race([pending,stopped]);
-  return {async recognize(image){const result=await Promise.race([worker.recognize(image,{rotateAuto:true}),stopped]);return String(result.data?.text||'').trim();},close};
+  return {async recognize(image){
+   onProgress('Amélioration du contraste et réduction des ombres…');
+   processImage(image);
+   const result=await Promise.race([worker.recognize(image,{rotateAuto:true},{text:true,blocks:true}),stopped]);
+   const {text,uncertain}=readableOCR(result.data||{});
+   if(uncertain)onWarning('Certains mots sont incertains : compare le texte à la photo avant de valider.');
+   return text;
+  },close};
  }catch(e){await close();throw e;}
 }

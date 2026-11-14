@@ -1,3 +1,7 @@
+## Version 3.4.6 - photos : réduction des caractères parasites
+
+Le contraste local réduit les ombres et le texte du verso. La transcription écarte les petits caractères isolés dans les marges et signale les mots incertains. Voir [les vérifications et limites](docs/V3.4.6.md).
+
 ## Version 3.4.5 — lecture automatique des documents
 
 Photos et PDF scannés sont transcrits sur l’appareil, sans connexion IA. Les documents existants peuvent être relus puis validés sans copier-coller. Voir [le fonctionnement et les vérifications](docs/V3.4.5.md).
