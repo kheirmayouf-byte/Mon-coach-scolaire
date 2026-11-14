@@ -1,0 +1,56 @@
+name: Windows download
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'desktop/package.json'
+      - '.github/workflows/windows-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - run: npm run package:windows
+        working-directory: desktop
+      - name: Publish Windows download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid release version' }
+          $releaseRoot = (Resolve-Path -LiteralPath 'desktop/release').Path
+          $appDir = (Resolve-Path -LiteralPath 'desktop/release/Mon Coach Scolaire-win32-x64').Path
+          $zipPath = Join-Path $releaseRoot 'Mon_Coach_Scolaire_Windows.zip'
+          $checksumPath = Join-Path $releaseRoot 'SHA256SUMS.txt'
+          Compress-Archive -LiteralPath $appDir -DestinationPath $zipPath -CompressionLevel Optimal
+          $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -LiteralPath $checksumPath -Value "$hash  Mon_Coach_Scolaire_Windows.zip" -Encoding ascii
+          $tag = "v$version"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $zipPath $checksumPath --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $tag $zipPath $checksumPath --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "Mon Coach Scolaire $version - Windows" --notes-file 'docs/Windows-release.md'
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Windows release could not be published' }

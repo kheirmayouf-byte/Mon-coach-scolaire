@@ -1,3 +1,7 @@
+## Correctif 3.4.1
+
+Le panneau Mon IA ne présente plus de sélecteur sans action. Le site propose le téléchargement Windows et les étapes de connexion. Dans le client Windows, le bouton Continuer avec ChatGPT lance la connexion existante. Le site hébergé ne reprend pas l’abonnement ChatGPT du client local.
+
 ## Mise à jour 3.4.0
 
 Parcours de connexion, documents, sessions, emploi du temps et chat améliorés. Voir [les changements et limites vérifiés](docs/V3.4.md).
