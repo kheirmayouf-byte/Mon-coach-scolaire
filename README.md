@@ -1,3 +1,7 @@
+## Mise à jour 3.4.0
+
+Parcours de connexion, documents, sessions, emploi du temps et chat améliorés. Voir [les changements et limites vérifiés](docs/V3.4.md).
+
 # Mon Coach Scolaire
 
 Application familiale sur GitHub Pages, avec données et documents privés dans Supabase et connecteur ÉcoleDirecte côté serveur.

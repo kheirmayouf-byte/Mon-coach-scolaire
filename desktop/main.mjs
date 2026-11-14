@@ -4,6 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {createChatGPT} from './vendor/siwc/src/index.ts';
 import {credentialEncryption} from './encryption.mjs';
 import {createCoach} from './coach.mjs';
+import {createDictation} from './dictation.mjs';
 import publicConfig from '../src/public-config.js';
 
 protocol.registerSchemesAsPrivileged([{scheme:'mcs', privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
@@ -24,6 +25,7 @@ else {
       openBrowser:async value => {const url=new URL(value);if(url.origin!=='https://auth.openai.com')throw Error('Destination refusée.');await shell.openExternal(url.href);},
     });
     const coach = createCoach(chatgpt);
+    const dictation=createDictation();
     const allowed = event => event.sender === window?.webContents && event.senderFrame === event.sender.mainFrame && event.senderFrame.url === base;
     const errors = error => {
       // Do not forward upstream error bodies, request objects or submitted data.
@@ -38,6 +40,8 @@ else {
       if(!allowed(event))throw Error('Fenêtre non autorisée.');
       try {return {ok:true,data:await fn(...args)};}catch(error){return {ok:false,error:errors(error)};}
     });}
+    handle('dictate',()=>dictation.listen());
+    handle('cancel-dictation',()=>dictation.cancel());
     handle('status',()=>coach.status());
     handle('connect',async()=>{await chatgpt.signIn({reconsent:true});return coach.status();});
     handle('cancel',()=>chatgpt.cancelSignIn());
@@ -59,8 +63,8 @@ else {
     window.setMenuBarVisibility(false);
     window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
     window.webContents.on('will-navigate',event=>event.preventDefault());
-    window.webContents.session.setPermissionRequestHandler((_web,_permission,callback)=>callback(false));
-    window.webContents.session.setPermissionCheckHandler(()=>false);
+    window.webContents.session.setPermissionRequestHandler((web,permission,callback,details)=>callback(web===window.webContents&&web.getURL()===base&&permission==='media'&&Array.isArray(details.mediaTypes)&&details.mediaTypes.length>0&&details.mediaTypes.every(type=>type==='audio')));
+    window.webContents.session.setPermissionCheckHandler((web,permission,origin,details)=>web===window.webContents&&web.getURL()===base&&permission==='media'&&details.mediaType==='audio');
     session.defaultSession.on('will-download',(_event,item)=>{item.setSaveDialogOptions({title:'Enregistrer le document'});});
     await window.loadURL(base);
   }).catch(()=>{console.error('Démarrage impossible. Réinstalle la version ordinateur.');app.quit();});

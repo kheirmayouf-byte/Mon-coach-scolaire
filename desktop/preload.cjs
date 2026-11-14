@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 // No tokens, arbitrary URLs, filesystem access or generic IPC exposed to the page.
 contextBridge.exposeInMainWorld('coachDesktop', Object.freeze({
+  dictate: () => ipcRenderer.invoke('mcs:dictate'),
+  cancelDictation: () => ipcRenderer.invoke('mcs:cancel-dictation'),
   status: () => ipcRenderer.invoke('mcs:status'),
   connect: () => ipcRenderer.invoke('mcs:connect'),
   cancel: () => ipcRenderer.invoke('mcs:cancel'),

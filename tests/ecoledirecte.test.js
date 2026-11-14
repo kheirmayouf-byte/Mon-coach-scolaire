@@ -79,3 +79,11 @@ test('homework attachment references are sealed, downloads are bounded and canno
  await assert.rejects(c.download('25:123:99'),/Relis les devoirs/);assert.equal(m.calls.length,4);
  const file=await c.download('25:123:77');assert.equal(file.file.mime,'application/pdf');assert.ok(m.calls[4].url.includes('fichierId=77'));assert.equal(m.calls[4].init.headers['X-Token'],'login-token');
 });
+
+test('timetable uses the linked student route, bounds the period and rejects malformed courses atomically',async()=>{
+ const m=mock([{body:{code:200,data:[{id:7,matiere:'Maths',start_date:'2026-11-10 08:30',end_date:'2026-11-10 09:25',salle:'B12'}]}}]);
+ const client=new EDClient({stage:'ready',account:10,token:'token',students:[{key:'10:25',id:25,account:10,name:'A'}]},m.fetch);
+ const result=await client.timetable('10:25','2026-11-09','2026-11-22');assert.equal(result.courses[0].subject,'Maths');assert.equal(result.courses[0].date,'2026-11-10');assert.ok(m.calls[0].url.includes('/E/25/emploidutemps.awp?verbe=get'));assert.equal(JSON.parse(new URLSearchParams(m.calls[0].init.body).get('data')).dateFin,'2026-11-22');
+ await assert.rejects(client.timetable('10:999','2026-11-09','2026-11-22'),/inaccessible/);await assert.rejects(client.timetable('10:25','2026-11-09','2026-12-22'),/14 jours/);
+ const malformed=mock([{body:{code:200,data:[{id:7,matiere:'Maths',start_date:'2026-11-10 25:00',end_date:'2026-11-10 26:00'}]}}]);await assert.rejects(new EDClient(client.state,malformed.fetch).timetable('10:25','2026-11-09','2026-11-22'),/horaire/);
+});

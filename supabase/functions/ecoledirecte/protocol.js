@@ -129,6 +129,26 @@ export class EDClient {
   if(this.state.attachments.length>80)throw new EDProblem('Trop de pièces jointes : réduis la période à importer.');
   return {stage:'ready',students:publicStudents(this.state.students),rows};
  }
+ async timetable(studentKey,from,to){
+  if(this.state.stage!=='ready')throw new EDProblem('Connecte-toi à ÉcoleDirecte.');
+  const student=this.state.students.find(s=>s.key===studentKey);if(!student)throw new EDProblem('Profil élève inaccessible.');
+  if(!validDate(from)||!validDate(to)||to<from||(Date.parse(to)-Date.parse(from))/86400000>13)throw new EDProblem('Choisis une période de 14 jours maximum.');
+  if(student.account!==this.state.account){
+   if(!student.idLogin&&this.state.account!==undefined)throw new EDProblem('Ce changement de compte nécessite une connexion séparée.');
+   if(student.idLogin){const switched=await this.request('renewtoken.awp?verbe=post',{idUser:student.idLogin,uuid:''},false);checkReply(switched);if(switched.data?.id!==undefined&&switched.data.id!==student.account)throw new EDProblem('Le profil retourné ne correspond pas au compte demandé.');}
+   this.state.account=student.account;
+  }
+  const reply=await this.request('E/'+student.id+'/emploidutemps.awp?verbe=get',{dateDebut:from,dateFin:to,avecTrous:false},false);checkReply(reply);
+  if(!Array.isArray(reply.data))throw new EDProblem('Format de l’emploi du temps non reconnu.');
+  if(reply.data.length>300)throw new EDProblem('Trop de cours : réduis la période.');
+  const courses=reply.data.map((course,i)=>{
+   const start=String(course.start_date||'').match(/^([0-9]{4}-[0-9]{2}-[0-9]{2})[ T]([0-9]{2}:[0-9]{2})/),end=String(course.end_date||'').match(/^([0-9]{4}-[0-9]{2}-[0-9]{2})[ T]([0-9]{2}:[0-9]{2})/);
+   if(!start||!end||!validDate(start[1])||start[1]<from||start[1]>to||end[1]!==start[1]||end[2]<=start[2]||!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(start[2])||!/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(end[2]))throw new EDProblem('Un horaire de cours est invalide. Aucun nouvel emploi du temps enregistré.');
+   return {id:student.key+':'+String(course.id??i).slice(0,80)+':'+start[1],date:start[1],start:start[2],end:end[2],subject:String(course.matiere||course.text||'Cours').slice(0,100),room:String(course.salle||'').slice(0,100),cancelled:flag(course.isAnnule)||flag(course.annule)};
+  });
+  return {stage:'ready',students:publicStudents(this.state.students),courses};
+ }
+
  async download(key){
   if(this.state.stage!=='ready')throw new EDProblem('Connecte-toi à ÉcoleDirecte.');
   const ref=this.state.attachments?.find(a=>a.key===key),student=this.state.students?.find(s=>s.key===ref?.student);

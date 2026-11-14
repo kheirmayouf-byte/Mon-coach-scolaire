@@ -25,33 +25,72 @@ Deno.serve(async(req:Request)=>{
   if(!check.ok)return reply({error:'Session parent expirée. Reconnecte-toi.'},401);
   const parent=await check.json();
   const membership=await fetch(base+'/rest/v1/mcs_members?select=family_id&user_id=eq.'+encodeURIComponent(parent.id),{headers:authHeaders,signal:AbortSignal.timeout(10000)});
-  if(!membership.ok||(await membership.json()).length!==1)return reply({error:'Compte parent non autorisé dans ce foyer.'},403);
+  const members=membership.ok?await membership.json():[];
+  if(members.length!==1)return reply({error:'Compte parent non autorisé dans ce foyer.'},403);
+  const family=members[0].family_id;
   if(Number(req.headers.get('content-length')||0)>65000)return reply({error:'Demande trop volumineuse.'},413);
   const raw=await req.text();if(raw.length>65000)return reply({error:'Demande trop volumineuse.'},413);
   const body=JSON.parse(raw);
-  if(!['login','answer','homework','download'].includes(body.action))return reply({error:'Action non autorisée.'},400);
+  if(!['login','answer','homework','download','status','disconnect','timetable'].includes(body.action))return reply({error:'Action non autorisée.'},400);
   rate(parent.id,body.action);
-  // Server-only material; never used to authorize database access or sent to the browser.
-  const secret=Deno.env.get('MCS_ED_ENCRYPTION_KEY')||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if(!secret)throw Error();
-  const envelope=await makeEnvelope(secret);
-  let adapter:EDClient,result,expires;
+  const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,secret=Deno.env.get('MCS_ED_ENCRYPTION_KEY')||service;
+  if(!secret||!service)throw Error();
+  const envelope=await makeEnvelope(secret),serverHeaders={Authorization:'Bearer '+service,apikey:service,'Content-Type':'application/json'};
+  const connectionURL=base+'/rest/v1/mcs_connections?user_id=eq.'+encodeURIComponent(parent.id)+'&family_id=eq.'+encodeURIComponent(family);
+  async function stored(){
+   const r=await fetch(connectionURL+'&select=sealed_state',{headers:serverHeaders,signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error();
+   const rows=await r.json();if(!rows[0]?.sealed_state)return null;
+   try{return (await envelope.open(rows[0].sealed_state,parent.id)).state;}catch{return null;}
+  }
+  async function persist(state:any,credentials:any,publicState:any){
+   const sealed_state=await envelope.seal({adapter:state,credentials,public:publicState},parent.id,Date.now()+90*86400000);
+   const r=await fetch(base+'/rest/v1/mcs_connections?on_conflict=user_id',{method:'POST',headers:{...serverHeaders,Prefer:'resolution=merge-duplicates'},body:JSON.stringify({user_id:parent.id,family_id:family,sealed_state,updated_at:new Date().toISOString()}),signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error();
+  }
+  if(body.action==='disconnect'){
+   const r=await fetch(connectionURL,{method:'DELETE',headers:serverHeaders,signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error();
+   return reply({stage:'disconnected'});
+  }
+  let adapter:EDClient,result:any,credentials:any=null;
+  const saved=body.action==='login'?null:await stored();
+  if(body.action==='status'){
+   if(!saved)return reply({stage:'disconnected'});
+   const expires=Date.now()+20*60000;
+   return reply({...saved.public,links:saved.adapter.links||{},session:await envelope.seal(saved.adapter,parent.id,expires),expires});
+  }
   if(body.action==='login'){
    if(typeof body.username!=='string'||!body.username.trim()||body.username.length>200||typeof body.password!=='string'||!body.password||body.password.length>500)return reply({error:'Renseigne tes identifiants ÉcoleDirecte.'},400);
-   adapter=new EDClient();result=await adapter.login(body.username.trim(),body.password);
-   expires=Date.now()+(result.stage==='ready'?20:5)*60000;
+   credentials={username:body.username.trim(),password:body.password};adapter=new EDClient();result=await adapter.login(credentials.username,credentials.password);
   }else{
-   let saved;try{saved=await envelope.open(body.session,parent.id);}catch{return reply({error:'Session ÉcoleDirecte expirée. Reconnecte-toi.',reset:true},401);}
-   adapter=new EDClient(saved.state);expires=saved.expires;
-   if(body.action==='answer'){
-    result=await adapter.answer(body.answer);
-    if(result.stage==='ready')expires=Date.now()+20*60000;
-   }else if(body.action==='download')result=await adapter.download(body.key);
-   else result=await adapter.homework(body.student,body.from,body.to);
+   let state=saved?.adapter;
+   if(body.session){try{state=(await envelope.open(body.session,parent.id)).state;}catch{if(!saved)return reply({error:'Session ÉcoleDirecte expirée. Reconnecte-toi.',reset:true},401);}}
+   if(!state)return reply({error:'Configure ÉcoleDirecte dans Mon compte.',reset:true},401);
+   credentials=saved?.credentials;adapter=new EDClient(state);
+   if(body.action==='answer')result=await adapter.answer(body.answer);
+   else {
+    const execute=()=>body.action==='download'?adapter.download(body.key):body.action==='timetable'?adapter.timetable(body.student,body.from,body.to):adapter.homework(body.student,body.from,body.to);
+    try{result=await execute();}
+    catch(error){
+     // One re-login for an expired upstream token; never retry a rejected password or a challenge.
+     if(!(error instanceof EDProblem)||!error.message.includes('Session ÉcoleDirecte expirée')||!credentials)throw error;
+     adapter=new EDClient();const renewed=await adapter.login(credentials.username,credentials.password);
+     if(renewed.stage!=='ready'){await persist(adapter.state,credentials,renewed);const expires=Date.now()+5*60000;return reply({...renewed,session:await envelope.seal(adapter.state,parent.id,expires),expires});}
+     result=await execute();
+    }
+   }
   }
+  if(body.action==='timetable'){
+   if(typeof body.child!=='string'||!/^[-a-f0-9]{36}$/.test(body.child))return reply({error:'Profil destinataire invalide.'},400);
+   // The caller JWT and FK/RLS authorize this exact child and family.
+   const r=await fetch(base+'/rest/v1/mcs_timetables?on_conflict=child_id',{method:'POST',headers:{...authHeaders,'Content-Type':'application/json',Prefer:'resolution=merge-duplicates'},body:JSON.stringify({family_id:family,child_id:body.child,events:result.courses,period_from:body.from,period_to:body.to,synced_at:new Date().toISOString()}),signal:AbortSignal.timeout(10000)});
+   if(!r.ok)return reply({error:'Emploi du temps non enregistré. Vérifie le profil destinataire.'},403);
+   adapter.state.links={...(adapter.state.links||{}),[body.child]:body.student};
+  }
+  const publicState={stage:result.stage,...(result.students?{students:result.students}:{}),...(result.question?{question:result.question,choices:result.choices}:{})};
+  await persist(adapter.state,credentials,publicState);
+  const expires=Date.now()+(result.stage==='ready'?20:5)*60000;
   return reply({...result,session:await envelope.seal(adapter.state,parent.id,expires),expires});
  }catch(error){
-  // Never return upstream messages, request bodies, headers or stack traces.
+  // Never return credentials, upstream messages, request bodies or stack traces.
   if(error instanceof EDProblem){
    if(error.code==='ED_NO_PROFILES')console.warn(JSON.stringify({event:'mcs_ed_login_shape',code:error.code,shape:error.diagnostic}));
    return reply({error:error.message,code:error.code,reset:true},400);

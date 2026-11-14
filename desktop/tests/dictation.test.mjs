@@ -1,0 +1,5 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createDictation} from '../dictation.mjs';
+test('local dictation starts hidden with a fixed script, returns text and can be cancelled',async()=>{let callback,killed=false;const dictation=createDictation((file,args,options,cb)=>{assert.equal(file,'powershell.exe');assert.ok(args.includes('-NoProfile'));assert.equal(options.windowsHide,true);assert.ok(args.at(-1).includes('fr-FR'));callback=cb;return {kill(){killed=true;}};});const listening=dictation.listen();assert.throws(()=>dictation.listen(),/déjà/);callback(null,JSON.stringify({text:'Une question'}),'');assert.equal((await listening).text,'Une question');const cancelled=dictation.listen();dictation.cancel();callback(Error('killed'),'','');await assert.rejects(cancelled,/interrompue/);assert.equal(killed,true);});
+test('a missing French speech engine explains the required Windows setting',async()=>{const dictation=createDictation((_f,_a,_o,cb)=>{queueMicrotask(()=>cb(Error('missing'),'','FR_RECOGNIZER_MISSING'));return {kill(){}};});await assert.rejects(dictation.listen(),/reconnaissance vocale française/);});

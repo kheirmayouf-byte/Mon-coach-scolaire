@@ -12,21 +12,21 @@ function boot(){
  const children=[{id:'a',name:'Élève A'},{id:'b',name:'Élève B'}];
  w.__supabaseMock={auth:{onAuthStateChange:fn=>{onAuth=fn;},getSession:async()=>({data:{session:{}}}),getUser:async()=>({data:{user:{id:'parent'}}}),signOut:async()=>{onAuth('SIGNED_OUT');return {}; }},from(table){return {select(){return {eq:async()=>({data:table==='mcs_members'?[{family_id:'family'}]:table==='mcs_children'?children:table==='mcs_tasks'?tasks:table==='mcs_import_state'?imports:[],error:null})};},insert:async(rows)=>{tasks.push(...rows);return {};}};},rpc:async(name,{p_rows,p_child,p_from,p_to})=>{assert.equal(name,'mcs_refresh_ed');imports.splice(0,imports.length,{child_id:p_child,synced_at:'2026-11-09T15:00:00Z',period_from:p_from,period_to:p_to});tasks.push(...p_rows.map(r=>({...r,version:1})));return {data:{added:p_rows.length,updated:0}};},functions:{invoke:async(name,{body})=>{
  if(name==='coach-ai')return {data:{available:false}};
- calls.push({name,body});const base={stage:'ready',session:'encrypted-session',expires:Date.now()+1200000,students:[{key:'10:25',name:'Élève A',className:'Classe'},{key:'10:26',name:'Élève B',className:'Classe'}]};
+ if(body.action==='status')return {data:{stage:'disconnected'}};calls.push({name,body});const base={stage:'ready',session:'encrypted-session',expires:Date.now()+1200000,students:[{key:'10:25',name:'Élève A',className:'Classe'},{key:'10:26',name:'Élève B',className:'Classe'}]};
  if(body.action==='homework')base.rows=[{studentId:25,remoteId:123,subject:'Maths',given:'2026-11-09',due:'2026-11-10',html:'<p>Exercice</p>',documents:[]}];return {data:base};}}};
- w.eval(bundled.outputFiles[0].text);return {dom,w,tasks,calls};
+ w.Date=class extends Date{constructor(...args){super(...(args.length?args:['2026-11-09T08:00:00']));}static now(){return new Date('2026-11-09T08:00:00').getTime();}};w.eval(bundled.outputFiles[0].text);return {dom,w,tasks,calls};
 }
 const click=(w,s)=>w.document.querySelector(s).click();
 function submit(w,id,values={}){const form=w.document.getElementById(id);for(const [k,v]of Object.entries(values))form.elements[k].value=v;form.dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));}
 test('parent connects, maps a child, previews, imports once and logs out without persisting credentials',async(t)=>{
- const {dom,w,tasks,calls}=boot();t.after(()=>dom.window.close());await tick();click(w,'[data-tab=import]');
+ const {dom,w,tasks,calls}=boot();t.after(()=>dom.window.close());await tick();click(w,'[data-x=settings]');
  submit(w,'edLoginForm',{username:'ed-user',password:'private-password'});await tick();assert.equal(calls[0].body.action,'login');assert.ok(w.document.getElementById('edFetchForm'));
  submit(w,'edFetchForm',{student:'10:25',child:'a',from:'2026-11-09',to:'2026-11-22'});await tick();assert.match(w.document.getElementById('content').textContent,/Aperçu pour Élève A/);assert.equal(tasks.length,0);
  submit(w,'edImportForm');await tick();assert.equal(tasks.length,1);assert.equal(tasks[0].child_id,'a');assert.equal(tasks[0].source_key,'ecoledirecte:2026:25:123');
  click(w,'[data-tab=import]');submit(w,'edFetchForm',{student:'10:25',child:'a',from:'2026-11-09',to:'2026-11-22'});await tick();assert.match(w.document.getElementById('content').textContent,/Déjà importé/);assert.equal(w.document.querySelector('[name=item]').disabled,true);
  submit(w,'edImportForm');await tick();assert.equal(tasks.length,1);click(w,'[data-tab=planning]');assert.match(w.document.querySelector('.planning-children').textContent,/dernier import le/);
  assert.equal(JSON.stringify({...w.localStorage,...w.sessionStorage}).includes('private-password'),false);
- click(w,'[data-tab=settings]');click(w,'#logout');await tick();click(w,'[data-tab=import]');assert.equal(w.document.getElementById('edFetchForm'),null);
+ click(w,'[data-x=settings]');click(w,'#logout');await tick();click(w,'[data-tab=import]');assert.equal(w.document.getElementById('edFetchForm'),null);
 });
 test('child view cannot start an ÉcoleDirecte connection',async(t)=>{
  const {dom,w,calls}=boot();t.after(()=>dom.window.close());await tick();w.document.getElementById('profile').value='a';w.document.getElementById('profile').dispatchEvent(new w.Event('change'));click(w,'[data-tab=import]');assert.equal(w.document.getElementById('edLoginForm'),null);assert.equal(calls.length,0);

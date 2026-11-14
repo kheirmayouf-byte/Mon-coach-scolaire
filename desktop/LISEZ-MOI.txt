@@ -1,9 +1,9 @@
-MON COACH SCOLAIRE — VERSION ORDINATEUR 3.3.0
+MON COACH SCOLAIRE — VERSION ORDINATEUR 3.4.0
 Version de test pour Windows 10/11, 64 bits
 
 1. Extrais TOUT le fichier ZIP dans un dossier de ton ordinateur.
 2. Dans ce dossier, ouvre « Mon Coach Scolaire.exe ».
-3. Dans « Parents & connexion », connecte ton compte parent habituel
+3. Depuis le bouton en haut « Parents & connexion », connecte ton compte parent habituel
    pour retrouver les devoirs et les documents du foyer.
 4. Dans « Mon abonnement ChatGPT », clique « Continuer avec ChatGPT ».
    Ton navigateur habituel s’ouvre sur OpenAI. Choisis ton compte Plus
@@ -16,7 +16,7 @@ si ta limite d’abonnement est atteinte. « Gérer mon utilisation »
 ouvre le suivi ChatGPT. L’éligibilité reste à confirmer par le test.
 
 AVANT LES DEMANDES CONCERNANT UN ENFANT
-Dans Parents & connexion, vérifie la fiche pédagogique de chaque
+Dans Mon compte, vérifie la fiche pédagogique de chaque
 enfant et coche « J’ai vérifié ces consignes pour cet enfant ».
 Les projets Prof Noor et Prof Bettina ne sont pas automatiquement lus.
 Colle leurs consignes utiles dans la fiche du bon enfant.
@@ -27,14 +27,17 @@ Sélectionne l’enfant ou ouvre son devoir avant de poser ta question.
 Cette version répond aux questions écrites et propose des quiz QCM
 depuis les supports vérifiés. Les PDF contenant du texte sont lus
 sur l’appareil. Pour un scan ou une photo, complète le texte dans
-Documents. La transcription automatique et la dictée vocale ne sont
-pas incluses dans cette première version. La lecture orale dépend
+Documents. Le bouton Micro utilise le moteur de reconnaissance vocale
+française de Windows. Autorise le microphone et installe la langue
+française si nécessaire. Le mode conversation alterne dictée et lecture ;
+il ne s’agit pas du mode vocal temps réel de ChatGPT. La lecture dépend
 des voix disponibles sur Windows.
 
 Les accès ChatGPT restent sur cet ordinateur, chiffrés par Windows.
 Seuls les contenus nécessaires à ta demande sont transmis à OpenAI.
 Le compte parent et le compte ChatGPT sont deux connexions distinctes.
-Déconnecter le compte parent déconnecte aussi ChatGPT dans l’application.
+La connexion ChatGPT est conservée sur cet ordinateur. Pour la retirer,
+utilise explicitement Déconnecter ChatGPT dans Mon compte.
 Le site web et l’iPhone gardent leurs fonctions habituelles ; ce moteur
 ChatGPT fonctionne uniquement dans cette version ordinateur locale.
 
@@ -47,3 +50,14 @@ restent à valider sur ton ordinateur.
 Code source : https://github.com/kheirmayouf-byte/Mon-coach-scolaire
 Usage familial non commercial. Notices dans resources/app.asar,
 build/siwc-notices ; licences Electron dans le dossier principal.
+
+NOUVEAUTÉS 3.4
+Mon compte regroupe les connexions et disponibilités. ÉcoleDirecte est
+conservé chiffré dans le compte parent après une première reconnexion.
+Les vérifications de sécurité du fournisseur peuvent être redemandées.
+Les documents non vérifiés affichent directement leur éditeur.
+Une session ouvre une fenêtre dans l’application : pause, chrono masquable,
+fermeture avec reprise, réponses sauvegardées et annulation sans bilan.
+Les devoirs dont la date est dépassée passent automatiquement à Fait.
+Emploi du temps affiche les cours importés et les pastilles de devoirs.
+Le chat reste accessible grâce au bouton Ton coach en bas à droite.
