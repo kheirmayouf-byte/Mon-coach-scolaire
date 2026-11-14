@@ -1,4 +1,10 @@
 import {build} from 'esbuild';
-import {copyFile} from 'node:fs/promises';
+import {copyFile,mkdir,readdir} from 'node:fs/promises';
 await build({entryPoints:['src/app.js'],bundle:true,minify:true,outfile:'app.js',target:'es2022',format:'iife'});
 await copyFile('node_modules/pdfjs-dist/legacy/build/pdf.worker.min.mjs','pdf.worker.min.mjs');
+await mkdir('ocr/lang',{recursive:true});
+await copyFile('node_modules/tesseract.js/dist/worker.min.js','ocr/worker.min.js');
+for(const name of await readdir('node_modules/tesseract.js-core'))if(/(?:^tesseract-core-lstm|^tesseract-core-simd-lstm|^tesseract-core-relaxedsimd-lstm)\.wasm\.js$/.test(name))await copyFile('node_modules/tesseract.js-core/'+name,'ocr/'+name);
+await copyFile('node_modules/@tesseract.js-data/fra/4.0.0/fra.traineddata.gz','ocr/lang/fra.traineddata.gz');
+await copyFile('node_modules/tesseract.js/LICENSE.md','ocr/TESSERACT_LICENSE.txt');
+await copyFile('node_modules/tesseract.js-core/LICENSE','ocr/CORE_LICENSE.txt');

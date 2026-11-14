@@ -5,7 +5,7 @@ import {JSDOM} from 'jsdom';
 const html=readFileSync('index.html','utf8').replace(/<script defer src=\"app\.js[^\"]*\"><\/script>/,'');
 const bundle=()=>readFileSync('app.js','utf8');
 const tick=()=>new Promise(resolve=>setTimeout(resolve,20));
-function boot(seed){const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously'});const w=dom.window;if(seed)w.localStorage.setItem('mcs-local-v2',JSON.stringify(seed));w.confirm=()=>true;w.eval(bundle());return dom;}
+function boot(seed){const dom=new JSDOM(html,{url:'https://example.test/',runScripts:'dangerously'});const w=dom.window;w.Date=class extends Date{constructor(...args){super(...(args.length?args:['2026-11-09T08:00:00']));}static now(){return new Date('2026-11-09T08:00:00').getTime();}};if(seed)w.localStorage.setItem('mcs-local-v2',JSON.stringify(seed));w.confirm=()=>true;w.eval(bundle());return dom;}
 const click=(w,selector)=>w.document.querySelector(selector).click();
 const fill=(w,name,value)=>{w.document.querySelector(`[name="${name}"]`).value=value;};
 const submit=(w,id)=>w.document.getElementById(id).dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));

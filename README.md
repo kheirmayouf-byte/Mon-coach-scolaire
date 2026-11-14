@@ -1,3 +1,7 @@
+## Version 3.4.5 — lecture automatique des documents
+
+Photos et PDF scannés sont transcrits sur l’appareil, sans connexion IA. Les documents existants peuvent être relus puis validés sans copier-coller. Voir [le fonctionnement et les vérifications](docs/V3.4.5.md).
+
 ## Version 3.4.4 — planning finalisé
 
 Validation directe, consigne dépliable et cartes lisibles sur ordinateur et téléphone. Les quatre actions restent accessibles dans chaque carte. Voir [les changements et vérifications](docs/V3.4.4.md).

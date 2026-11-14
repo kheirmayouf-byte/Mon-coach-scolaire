@@ -35,3 +35,5 @@ header:has(.header-session:not(:empty)){z-index:25}body:has(.header-session:not(
  .session-expanded .consigne{font-size:.95rem}
  .session-meta,.session-top>span:first-child,.day-budget,.session-alert-mini{font-size:.8rem}
 }
+
+.document-reading{position:fixed;z-index:200;bottom:1rem;left:50%;transform:translateX(-50%);width:min(92vw,540px);padding:1rem;background:#fff;border:2px solid #334b87;border-radius:16px;box-shadow:0 6px 32px #17243d40}.document-reading p:first-child{font-weight:700}.document-reading p{margin:.4rem 0 .8rem}.document-preview{margin:1rem 0;max-height:65vh;overflow:auto;border:1px solid #cbd5e1;border-radius:10px;padding:.5rem}.document-preview img{display:block;max-width:100%;height:auto}.document-preview figcaption{font-size:.85rem;color:#475569}
