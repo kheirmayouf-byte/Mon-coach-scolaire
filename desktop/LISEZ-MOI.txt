@@ -1,4 +1,4 @@
-MON COACH SCOLAIRE — VERSION ORDINATEUR 3.4.2
+MON COACH SCOLAIRE — VERSION ORDINATEUR 3.4.3
 Version de test pour Windows 10/11, 64 bits
 
 1. Extrais TOUT le fichier ZIP dans un dossier de ton ordinateur.
@@ -64,10 +64,15 @@ Les devoirs dont la date est dépassée passent automatiquement à Fait.
 Emploi du temps affiche les cours importés et les pastilles de devoirs.
 Le chat reste accessible grâce au bouton Ton coach en bas à droite.
 
-CONNEXION DE LA VERSION EN LIGNE 3.4.2
+CONNEXION DE LA VERSION EN LIGNE 3.4.3
 Ferme une ancienne version Windows avant d’ouvrir celle-ci.
 Garde l’application ouverte. Sur le site, connecte le compte parent
 puis choisis Mon compte > Mon IA > Continuer avec ChatGPT.
 Autorise le rattachement dans la fenêtre Windows et l’accès local du
 navigateur s’il le demande. Les demandes IA se font ensuite dans le site.
 Le bouton Retirer le lien avec la version en ligne supprime ce rattachement.
+
+SÉCURITÉ DU RELAIS 3.4.3
+Le site envoie au relais une autorisation signée par Supabase, valable
+pour une seule demande et pendant 45 secondes. Le jeton du compte parent
+n’est pas transmis au relais. Les accès ChatGPT restent dans le coffre local.

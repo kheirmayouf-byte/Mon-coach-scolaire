@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {randomBytes,timingSafeEqual} from 'node:crypto';
+import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {readFile,writeFile,rename,mkdir} from 'node:fs/promises';
 import {dirname} from 'node:path';
 export const SITE_ORIGIN='https://kheirmayouf-byte.github.io';
@@ -12,18 +12,17 @@ export function createPairStore(file,encryption){
  };
 }
 export function accountBinding(status){return String(status.binding||'');}
-export async function verifyParent(token,config,fetcher=fetch){
- if(!/^[-A-Za-z0-9_.]+$/.test(token)||token.length>10000)throw Error('Session parent invalide.');
- const headers={Authorization:'Bearer '+token,apikey:config.key};
- const auth=await fetcher(config.url+'/auth/v1/user',{headers,redirect:'error',signal:AbortSignal.timeout(10000)});if(!auth.ok)throw Error('Session parent expirée. Reconnecte-toi à l’application.');
- const user=await auth.json();if(typeof user.id!=='string')throw Error('Compte parent invalide.');
- const member=await fetcher(config.url+'/rest/v1/mcs_members?select=family_id&user_id=eq.'+encodeURIComponent(user.id),{headers,redirect:'error',signal:AbortSignal.timeout(10000)}),members=member.ok?await member.json():[];
- if(members.length!==1)throw Error('Compte parent non autorisé dans ce foyer.');
- return {user:user.id,family:members[0].family_id,email:String(user.email||'').slice(0,200)};
+export async function verifyParent(ticket,request,config,fetcher=fetch){
+ if(typeof ticket!=='string'||ticket.length>3000)throw Error('Autorisation du relais invalide.');
+ const digest=createHash('sha256').update(JSON.stringify(request.body)).digest('hex');
+ const response=await fetcher(config.url+'/functions/v1/coach-relay',{method:'POST',headers:{'Content-Type':'application/json',apikey:config.key,Origin:SITE_ORIGIN},body:JSON.stringify({action:'verify',ticket,method:request.method,digest}),redirect:'error',signal:AbortSignal.timeout(10000)});
+ if(!response.ok)throw Error('Autorisation du relais expirée ou invalide. Reconnecte-toi au compte parent.');
+ const result=await response.json();if(!result.parent?.user||!result.parent?.family||!result.parent?.nonce)throw Error('Compte parent invalide.');return result.parent;
 }
+
 function sameBinding(a,b){if(!a||!b)return false;const left=Buffer.from(a),right=Buffer.from(b);return left.length===right.length&&timingSafeEqual(left,right);}
 export function createRelayHandler({coach,verify,pairs,approve,connect,cancel,models,usage,errors=()=> 'Le relais ChatGPT n’a pas pu répondre.'}){
- let connecting=false;const history=new Map();
+ let connecting=false;const history=new Map(),usedTickets=new Map();
  return async(req,res)=>{
   const origin=req.headers.origin;
   const headers={'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':SITE_ORIGIN,Vary:'Origin','Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'authorization, content-type','Access-Control-Allow-Private-Network':'true','X-Content-Type-Options':'nosniff'};
@@ -35,9 +34,10 @@ export function createRelayHandler({coach,verify,pairs,approve,connect,cancel,mo
   const match=req.url?.match(/^\/v1\/([a-z]+)$/),method=match?.[1];
   if(!methods.has(method))return reply(404,{ok:false,error:'Action non autorisée.'});
   try{
-   const auth=req.headers.authorization||'';if(!auth.startsWith('Bearer '))return reply(401,{ok:false,error:'Connecte-toi au compte parent.'});
+   const auth=req.headers.authorization||'';if(!auth.startsWith('MCS-Relay '))return reply(401,{ok:false,error:'Connecte-toi au compte parent.'});
    let raw='';for await(const chunk of req){raw+=chunk.toString('utf8');if(Buffer.byteLength(raw)>150000)return reply(413,{ok:false,error:'Réduis la taille du support.'});}
-   const body=JSON.parse(raw||'{}'),parent=await verify(auth.slice(7));
+   const body=JSON.parse(raw||'{}'),parent=await verify(auth.slice(10),{method,body});
+   const checked=Date.now();for(const [nonce,at]of usedTickets)if(checked-at>60000)usedTickets.delete(nonce);if(usedTickets.has(parent.nonce))return reply(401,{ok:false,error:'Cette autorisation a déjà été utilisée. Réessaie.'});usedTickets.set(parent.nonce,checked);
    const now=Date.now(),recent=(history.get(parent.user)||[]).filter(t=>now-t<60000);if(recent.length>=30)return reply(429,{ok:false,error:'Trop de demandes. Patiente une minute.'});history.set(parent.user,[...recent,now]);
    if(history.size>200)for(const [key,times]of history)if(times.every(t=>now-t>60000))history.delete(key);
    let pair=await pairs.get();

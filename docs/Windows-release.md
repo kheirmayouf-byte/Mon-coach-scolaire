@@ -1,4 +1,4 @@
-Version 3.4.2 de Mon Coach Scolaire : connexion ChatGPT dans l’application Windows et depuis le site en ligne sur le même ordinateur.
+Version 3.4.3 de Mon Coach Scolaire : connexion ChatGPT dans l’application Windows et depuis le site en ligne sur le même ordinateur.
 
 1. Ferme une ancienne version de l’application. Télécharge et extrais tout le ZIP, puis ouvre Mon Coach Scolaire.exe.
 2. Pour travailler dans le navigateur, garde l’application Windows ouverte puis ouvre Mon compte → Mon IA → Continuer avec ChatGPT sur le site.

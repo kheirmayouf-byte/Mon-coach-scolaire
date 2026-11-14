@@ -1,6 +1,6 @@
 import {desktop,desktopCall} from './desktop.js';
 import {passwordEyes} from './usability.js';
-import {createBrowserCoach} from './browser-coach.js';
+import {relayDigest,createBrowserCoach} from './browser-coach.js';
 import {monday} from './agenda.js';
 import {createExperience} from './experience.js';
 import {prepareEDImport} from './ecoledirecte.js';
@@ -194,7 +194,7 @@ async function deleteRow(table,item){
  const {data:rows,error}=await client.from('mcs_'+table).delete().eq('id',item.id).eq('version',item.version).select('id');
  if(error||!rows?.length)throw Error('Suppression non confirmée. Actualise avant de réessayer.');await loadCloud();
 }
-const browserCoach=createBrowserCoach(async()=>{if(!cloud||!client)return null;const {data:s}=await client.auth.getSession();return s.session;});
+const browserCoach=createBrowserCoach(async(method,payload)=>{if(!cloud||!client)return null;const {data:r,error}=await client.functions.invoke('coach-relay',{body:{action:'issue',method,digest:await relayDigest(payload)}});if(error||!r?.ticket)throw Error('Le compte parent n’a pas pu autoriser le relais. Reconnecte-toi ou réessaie.');return r.ticket;});
 const experience=createExperience({data:()=>data,profile:()=>profile,cloud:()=>cloud,user:()=>user,family:()=>family,client:()=>client,busy:()=>busy||!!refreshPromise,notice,render,insertRows,updateRow,deleteRow,saveLocal,action,callED,preferenceForm,openAccount,reload:loadCloud,browserCoach:()=>browserCoach,browserEnabled:()=>user&&localStorage.getItem('mcs-web-plan:'+user.id)==='true',setBrowserEnabled:value=>{if(user)localStorage.setItem('mcs-web-plan:'+user.id,String(value));},ed:()=>ed,refreshED:restoreED,changeTab:value=>{tab=value;editingTask=null;render();}});
 for(const id of ['identity','sessionDock','coachPanel','modalHost','studyHost']){
  $(id)?.addEventListener('click',e=>{const b=e.target.closest('button');if(b)experience.click(b);});

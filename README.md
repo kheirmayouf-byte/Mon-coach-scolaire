@@ -1,3 +1,7 @@
+## Version 3.4.3 — autorisations du relais limitées à une demande
+
+Le site se connecte au même abonnement ChatGPT via le relais local Windows. La session parent reste côté Supabase ; seules des preuves signées, brèves et liées à chaque demande circulent vers le relais. Voir [le parcours et ses limites](docs/V3.4.3.md).
+
 ## Version 3.4.2 — connexion IA dans le site
 
 Le site peut utiliser l’abonnement ChatGPT par le relais Windows du même ordinateur. Le client Windows doit rester ouvert. Le site fournit les boutons Continuer avec ChatGPT, Tester la connexion et le modèle du compte. Voir [le fonctionnement et les vérifications](docs/V3.4.2.md).

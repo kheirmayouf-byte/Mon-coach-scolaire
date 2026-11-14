@@ -10,7 +10,7 @@ import publicConfig from '../src/public-config.js';
 
 protocol.registerSchemesAsPrivileged([{scheme:'mcs', privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true}}]);
 const base = 'mcs://app/index.html';
-const verifyBrowserParent=token=>verifyBrowserParentWithConfig(token,publicConfig);
+const verifyBrowserParent=(ticket,request)=>verifyBrowserParentWithConfig(ticket,request,publicConfig);
 const assets = new Set(['index.html','app.js','style.css','pdf.worker.min.mjs']);
 let window, chatgpt, browserRelay;
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -75,7 +75,7 @@ else {
      browserRelay=await startBrowserRelay({
       coach:{...coach,status:async()=>({...await coach.status(),binding:(await chatgpt.getSession()).profileId||''})},
       pairs:browserPairs,
-      verify:token=>verifyBrowserParent(token),
+      verify:(ticket,request)=>verifyBrowserParent(ticket,request),
       approve:async parent=>{window.show();window.focus();const result=await dialog.showMessageBox(window,{type:'question',title:'Relier la version en ligne',message:'Autoriser le site Mon Coach Scolaire à utiliser la connexion ChatGPT de cet ordinateur ?',detail:'Compte parent : '+parent.email+'\nSeul le site kheirmayouf-byte.github.io sera accepté. Les jetons ChatGPT restent chiffrés sur cet ordinateur. Tu pourras retirer ce lien dans Mon compte.',buttons:['Refuser','Autoriser'],defaultId:0,cancelId:0,noLink:true});return result.response===1;},
       connect:async()=>{await chatgpt.signIn({reconsent:true});return {...await coach.status(),binding:(await chatgpt.getSession()).profileId||''};},
       cancel:()=>chatgpt.cancelSignIn(),models:()=>chatgpt.listModels(),usage:()=>shell.openExternal('https://chatgpt.com/settings/usage'),errors,
