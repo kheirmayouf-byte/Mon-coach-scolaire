@@ -1,3 +1,7 @@
+## Version 3.4.7 - supports reliés et ressources dans les exercices
+
+Documents partagés entre devoirs du même enfant, bibliothèque de révision, entraînements à partir de supports, récupération élargie des pièces jointes du cahier de texte, lecteurs audio/vidéo et planning allégé. Voir [les changements et limites](docs/V3.4.7.md).
+
 ## Version 3.4.6 - photos : réduction des caractères parasites
 
 Le contraste local réduit les ombres et le texte du verso. La transcription écarte les petits caractères isolés dans les marges et signale les mots incertains. Voir [les vérifications et limites](docs/V3.4.6.md).

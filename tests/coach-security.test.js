@@ -7,6 +7,7 @@ test('coach tables and document storage enforce family, child and source boundar
  await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key);grant usage on schema public,auth to anon,authenticated;create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant execute on function auth.uid() to anon,authenticated;
  create schema storage;create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);create table storage.objects(id uuid default gen_random_uuid(),bucket_id text,name text);alter table storage.objects enable row level security;grant usage on schema storage to authenticated;grant select,insert,delete on storage.objects to authenticated;`);
  for(const p of ['supabase/001_family_security.sql','supabase/migrations/20261109084957_family_planning_preferences.sql','supabase/migrations/20261109143632_coach_learning_v3.sql','supabase/migrations/20261109155123_clarify_homework_sessions.sql','supabase/migrations/20261109163628_movable_work_agenda.sql','supabase/migrations/'+(await readdir('supabase/migrations')).find(n=>n.endsWith('_usability_connections_timetable.sql'))])await db.exec(await readFile(p,'utf8'));
+ await db.exec(await readFile('supabase/migrations/20261115000139_shared_document_links.sql','utf8'));
  const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',fa='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',fb='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',ca='aaaaaaaa-1111-4111-8111-111111111111',cb='bbbbbbbb-2222-4222-8222-222222222222',ta='aaaaaaaa-3333-4333-8333-333333333333';
  await db.exec(`insert into auth.users values('${a}'),('${b}');insert into mcs_families values('${fa}'),('${fb}');insert into mcs_members values('${a}','${fa}'),('${b}','${fb}');insert into mcs_children values('${ca}','${fa}','A'),('${cb}','${fb}','B');insert into mcs_tasks(id,family_id,child_id,subject,description,given,due,minutes,done,source_key) values('${ta}','${fa}','${ca}','Maths','Ancienne consigne','2026-11-09','2026-11-10',35,true,'ecoledirecte:2026:25:123');set role authenticated;select set_config('request.jwt.claim.sub','${b}',false);`);
  for(const table of ['profiles','sessions','attempts','reminders','documents','parent_settings','workspaces','import_state','agenda_rules','timetables'])assert.equal((await db.query('select * from mcs_'+table)).rows.length,0);
@@ -45,6 +46,16 @@ test('coach tables and document storage enforce family, child and source boundar
  await assert.rejects(db.query(`update mcs_agenda_rules set child_id='${cb}',version=3`),/permission denied/);
  await assert.rejects(db.query(`update mcs_agenda_rules set category='invalid',version=3`),/check constraint/);
  await db.exec(`select set_config('request.jwt.claim.sub','${b}',false);`);assert.equal((await db.query('select * from mcs_agenda_rules')).rows.length,0);
+ const doc='aaaaaaaa-5555-4555-8555-555555555555',ta2='aaaaaaaa-6666-4666-8666-666666666666',sibling='aaaaaaaa-7777-4777-8777-777777777777',siblingTask='aaaaaaaa-8888-4888-8888-888888888888';
+ await db.exec(`reset role;insert into mcs_children values('${sibling}','${fa}','Sibling');insert into mcs_tasks(id,family_id,child_id,subject,description,given,due,minutes,done) values('${ta2}','${fa}','${ca}','Maths','Suite','2026-11-09','2026-11-17',20,false),('${siblingTask}','${fa}','${sibling}','Maths','Privé','2026-11-09','2026-11-17',20,false);set role authenticated;select set_config('request.jwt.claim.sub','${a}',false);insert into mcs_documents(id,family_id,child_id,task_id,name,mime,bytes,object_path) values('${doc}','${fa}','${ca}','${ta}','Cours','text/plain',10,'${fa}/${ca}/${doc}');`);
+ await db.query('select mcs_set_document_links($1,$2,$3,$4)',[doc,1,[ta,ta2],'Maths']);
+ assert.equal((await db.query('select * from mcs_document_links')).rows.length,2);
+ await assert.rejects(db.query('select mcs_set_document_links($1,$2,$3,$4)',[doc,1,[],'Maths']),/changed/);
+ await assert.rejects(db.query('select mcs_set_document_links($1,$2,$3,$4)',[doc,2,[siblingTask],'Maths']),/another child/);
+ assert.equal((await db.query('select * from mcs_document_links')).rows.length,2);
+ await db.exec(`select set_config('request.jwt.claim.sub','${b}',false);`);
+ assert.equal((await db.query('select * from mcs_document_links')).rows.length,0);
+ await assert.rejects(db.query('select mcs_set_document_links($1,$2,$3,$4)',[doc,2,[ta],'Maths']),/unavailable/);
  await db.exec('set role anon;');await assert.rejects(db.query('select * from mcs_workspaces'),/permission denied/);
  await db.close();
 });

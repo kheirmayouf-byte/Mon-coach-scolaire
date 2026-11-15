@@ -5,7 +5,7 @@ const limits=new Map<string,number[]>();
 function rate(uid:string,action:string){
  const key=uid+':'+action,now=Date.now(),windowMs=action==='login'?300000:60000;
  const history=(limits.get(key)||[]).filter(t=>now-t<windowMs);
- if(history.length>=(action==='login'?5:20))throw new EDProblem('Trop de demandes. Patiente quelques minutes avant de réessayer.');
+ if(history.length>=(action==='login'?5:action==='download'?90:20))throw new EDProblem('Trop de demandes. Patiente quelques minutes avant de réessayer.');
  history.push(now);limits.set(key,history);
  if(limits.size>1000)for(const [k,v] of limits)if(v.every(t=>now-t>300000))limits.delete(k);
 }
@@ -67,7 +67,7 @@ Deno.serve(async(req:Request)=>{
    credentials=saved?.credentials;adapter=new EDClient(state);
    if(body.action==='answer')result=await adapter.answer(body.answer);
    else {
-    const execute=()=>body.action==='download'?adapter.download(body.key):body.action==='timetable'?adapter.timetable(body.student,body.from,body.to):adapter.homework(body.student,body.from,body.to);
+    const execute=()=>body.action==='download'?adapter.download(body.key):body.action==='timetable'?adapter.timetable(body.student,body.from,body.to):adapter.homework(body.student,body.from,body.to,{includeLessons:body.includeLessons===true});
     try{result=await execute();}
     catch(error){
      // One re-login for an expired upstream token; never retry a rejected password or a challenge.

@@ -91,7 +91,7 @@ export class EDClient {
   }else throw new EDProblem('Aucune vérification en attente.');
   return this.replay();
  }
- async homework(studentKey,from,to){
+ async homework(studentKey,from,to,{includeLessons=false}={}){
   if(this.state.stage!=='ready')throw new EDProblem('Connecte-toi à ÉcoleDirecte.');
   const student=this.state.students.find(s=>s.key===studentKey);
   if(!student)throw new EDProblem('Profil élève inaccessible.');
@@ -103,31 +103,45 @@ export class EDClient {
   }
   const overview=await this.request(`Eleves/${student.id}/cahierdetexte.awp?verbe=get`,{},false);checkReply(overview);
   if(!overview.data||typeof overview.data!=='object'||Array.isArray(overview.data))throw new EDProblem('Format du cahier de texte non reconnu.');
-  const dates=Object.keys(overview.data).filter(d=>validDate(d)&&d>=from&&d<=to).sort();
-  const rows=[];this.state.attachments=[];
+  const dates=includeLessons?Array.from({length:Math.round((Date.parse(to)-Date.parse(from))/86400000)+1},(_,i)=>new Date(Date.parse(from)+i*86400000).toISOString().slice(0,10)):Object.keys(overview.data).filter(d=>validDate(d)&&d>=from&&d<=to).sort();
+  const rows=[],course_documents=[],warnings=[];this.state.attachments=[];
+  const references=(documents,scope)=>{
+   if(!Array.isArray(documents))return [];
+   if(documents.length>30)throw new EDProblem('Plus de 30 documents dans un cours : réduis la période ou consulte ÉcoleDirecte.');
+   const refs=[];
+   for(const d of documents){
+    const fileId=d.id??d.fichierId,name=String(d.libelle||d.nom||d.nomFichier||'Document joint').slice(0,150);
+    if((typeof fileId!=='number'&&typeof fileId!=='string')||!/^[a-zA-Z0-9_-]{1,100}$/.test(String(fileId))){warnings.push('Document sans identifiant téléchargeable : '+name);continue;}
+    const key=`${student.id}:${scope}:${fileId}`;
+    if(!this.state.attachments.some(ref=>ref.key===key))this.state.attachments.push({key,name,student:student.key,fileId:String(fileId)});
+    refs.push({key,name,student:student.key});
+   }return refs;
+  };
   for(const due of dates){
-   if(!Array.isArray(overview.data[due]))throw new EDProblem('Liste des devoirs non reconnue.');
-   if(!overview.data[due].length)continue;
+   const items=overview.data[due]||[];
+   if(!Array.isArray(items))throw new EDProblem('Liste des devoirs non reconnue.');
+   if(!includeLessons&&!items.length)continue;
    const detail=await this.request(`Eleves/${student.id}/cahierdetexte/${due}.awp?verbe=get`,{},false);checkReply(detail);
    if(!Array.isArray(detail.data?.matieres))throw new EDProblem('Détail du cahier de texte non reconnu. Aucun import effectué.');
-   for(const item of overview.data[due]){
+   if(includeLessons)for(const subject of detail.data.matieres){
+    const docs=subject.contenuDeSeance?.documents||[];
+    const matching=items.find(item=>(subject.aFaire?.idDevoir??subject.id)===item.idDevoir);
+    const label=String(subject.matiere||subject.nomMatiere||matching?.matiere||'Cours').slice(0,80);
+    const scope='course:'+due+':'+String(subject.id??subject.codeMatiere??encodeURIComponent(label)).slice(0,80);
+    for(const ref of references(docs,scope))course_documents.push({...ref,subject:label,date:due});
+   }
+   for(const item of items){
     if(!Number.isSafeInteger(item.idDevoir)||!item.matiere)throw new EDProblem('Un devoir n’a pas d’identifiant stable. Aucun import effectué.');
     const subject=detail.data.matieres.find(m=>(m.aFaire?.idDevoir??m.id)===item.idDevoir);
     const work=subject?.aFaire;
-    const attachment_refs=[];
-    for(const d of (Array.isArray(work?.documents)?work.documents:[]).slice(0,30)){
-     const fileId=d.id??d.fichierId;
-     if((typeof fileId!=='number'&&typeof fileId!=='string')||!/^[a-zA-Z0-9_-]{1,100}$/.test(String(fileId)))continue;
-     const key=`${student.id}:${item.idDevoir}:${fileId}`,name=String(d.libelle||d.nom||d.nomFichier||'Document joint').slice(0,150);
-     const ref={key,name,student:student.key,fileId:String(fileId)};attachment_refs.push({key,name,student:student.key});this.state.attachments.push(ref);
-    }
+    const attachment_refs=references(work?.documents,item.idDevoir);
     const documents=(work?.documents||[]).map(d=>String(d.libelle||d.nom||d.nomFichier||'Document joint').slice(0,150));
     rows.push({student:student.key,studentId:student.id,remoteId:item.idDevoir,subject:String(item.matiere),given:work?.donneLe||item.donneLe,due,html:work?.contenu?decode64(work.contenu):'',attachment_refs,is_assessment:flag(item.interrogation)||flag(subject?.interrogation),documents,hasDocuments:flag(item.documentsAFaire)||documents.length>0});
    }
    if(rows.length>200)throw new EDProblem('Trop de devoirs : réduis la période.');
   }
   if(this.state.attachments.length>80)throw new EDProblem('Trop de pièces jointes : réduis la période à importer.');
-  return {stage:'ready',students:publicStudents(this.state.students),rows};
+  return {stage:'ready',students:publicStudents(this.state.students),rows,course_documents,warnings,coverage:{from,to,daysRead:dates.length,includesLessons:includeLessons}};
  }
  async timetable(studentKey,from,to){
   if(this.state.stage!=='ready')throw new EDProblem('Connecte-toi à ÉcoleDirecte.');

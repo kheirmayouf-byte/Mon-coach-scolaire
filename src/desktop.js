@@ -1,3 +1,4 @@
+import {taskDocuments} from './document-links.js';
 export const desktop = () => window.coachDesktop;
 export async function desktopCall(method, ...args) {
   const result = await desktop()[method](...args);
@@ -12,6 +13,6 @@ export function learningContext(data, child, taskId) {
   if (!profile.confirmed) throw Error('Vérifie et confirme la fiche pédagogique de cet enfant dans Parents & connexion avant de solliciter l’IA.');
   return {confirmed:true, pedagogy:{needs:profile.needs,strengths:profile.strengths,instructions:profile.instructions,one_step:profile.one_step},
     task:task ? {subject:task.subject,description:task.description} : null,
-    supports:(data.documents || []).filter(doc => doc.child === child && doc.verified && doc.content_text && (!task || doc.task_id === task.id || !doc.task_id && doc.subject === task.subject)).slice(0,8).map(doc => ({id:doc.id,name:doc.name,verified:true,text:doc.content_text.slice(0,12000)})),
+    supports:(task?taskDocuments(task,data.documents,data.document_links):data.documents||[]).filter(doc=>doc.child===child&&doc.verified&&doc.content_text).slice(0,8).map(doc => ({id:doc.id,name:doc.name,verified:true,text:doc.content_text.slice(0,12000)})),
   };
 }

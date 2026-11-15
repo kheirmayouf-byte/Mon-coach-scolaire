@@ -87,3 +87,11 @@ test('timetable uses the linked student route, bounds the period and rejects mal
  await assert.rejects(client.timetable('10:999','2026-11-09','2026-11-22'),/inaccessible/);await assert.rejects(client.timetable('10:25','2026-11-09','2026-12-22'),/14 jours/);
  const malformed=mock([{body:{code:200,data:[{id:7,matiere:'Maths',start_date:'2026-11-10 25:00',end_date:'2026-11-10 26:00'}]}}]);await assert.rejects(new EDClient(client.state,malformed.fetch).timetable('10:25','2026-11-09','2026-11-22'),/horaire/);
 });
+
+test('full document scan includes lesson-only dates, deduplicates references and reports inaccessible documents',async()=>{
+ const m=mock([{body:{code:200,data:{'2026-11-10':[]}}},{body:{code:200,data:{matieres:[{id:12,matiere:'Histoire',contenuDeSeance:{documents:[{id:77,libelle:'Cours.pdf'},{libelle:'Lien externe'}]}}]}}},{body:{code:200,data:{matieres:[]}}}]);
+ const c=new EDClient({stage:'ready',account:10,token:'token',students:[{key:'10:25',id:25,account:10,name:'A'}]},m.fetch);
+ const result=await c.homework('10:25','2026-11-09','2026-11-10',{includeLessons:true});
+ assert.equal(result.rows.length,0);assert.equal(result.course_documents.length,1);assert.equal(result.course_documents[0].date,'2026-11-09');assert.equal(result.course_documents[0].subject,'Histoire');assert.equal(result.coverage.daysRead,2);assert.equal(result.warnings.length,1);
+ assert.equal(c.state.attachments.length,1);assert.match(m.calls[1].url,/cahierdetexte\/2026-11-09/);await assert.rejects(c.download('25:course:2026-11-09:12:999'),/Relis les devoirs/);
+});

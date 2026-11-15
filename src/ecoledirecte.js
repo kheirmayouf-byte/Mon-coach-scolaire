@@ -1,9 +1,10 @@
 import {validDate,validateTask} from './core.js';
+import {publicResourceURL} from './resources.js';
 // Parse teacher HTML in an inert document. No HTML or authenticated resource URLs enter the app.
 export function teacherText(html,Parser=DOMParser){
  const doc=new Parser().parseFromString(String(html),'text/html');
  doc.querySelectorAll('script,style,iframe,object,embed,svg,math,img,video,audio,source,link,meta').forEach(n=>n.remove());
- doc.querySelectorAll('a').forEach(a=>a.replaceWith(doc.createTextNode(a.textContent||'')));
+ doc.querySelectorAll('a').forEach(a=>{const label=a.textContent||'',url=publicResourceURL(a.getAttribute('href'));a.replaceWith(doc.createTextNode(label+(url&&!label.includes(url)?' ('+url+')':'')));});
  doc.querySelectorAll('br').forEach(n=>n.replaceWith(doc.createTextNode('\n')));
  doc.querySelectorAll('p,div,li,tr,h1,h2,h3,h4').forEach(n=>n.append(doc.createTextNode('\n')));
  return doc.body.textContent.replace(/\u00a0/g,' ').replace(/[ \t]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();

@@ -1,4 +1,6 @@
 import {dateKey,validDate,daySlot,plan,validateTask} from './core.js';
+import {taskDocuments,subjectKey} from './document-links.js';
+import {documentQuestions} from './document-exercises.js';
 export const daysAfter=(day,n)=>{const d=new Date(day+'T12:00:00');d.setDate(d.getDate()+n);return dateKey(d);};
 export const weekStart=(today=dateKey())=>daysAfter(today,-((new Date(today+'T12:00:00').getDay()+6)%7));
 export const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim();
@@ -53,15 +55,9 @@ export function competency(attempts){
   return {child:rows[0].child,topic:rows[0].topic,level,attempts:rows.length,last:rows.at(-1),questions:questions.size};
  });
 }
-export function sourceQuestions(task,cards,documents){
- const questions=cards.filter(c=>c.child===task.child&&normalize(c.subject)===normalize(task.subject)).map(c=>({id:'card:'+c.id,question:c.question,answer:c.answer,source:'Fiche de révision',source_id:c.id,kind:'open'}));
- for(const doc of documents.filter(d=>d.child===task.child&&d.verified&&d.content_text&&(d.task_id===task.id||!d.task_id&&normalize(d.subject)===normalize(task.subject)))){
-  for(const line of doc.content_text.split(/\n/)){
-   // Deterministic extraction of explicit definitions, not invented interpretations of a lesson.
-   const m=line.trim().match(/^(.{2,100}?)\s*[:=]\s*(.{3,500})$/);
-   if(m)questions.push({id:'doc:'+doc.id+':'+normalize(m[1]),question:`Explique : ${m[1].trim()}`,answer:m[2].trim(),source:doc.name,source_id:doc.id,kind:'open'});
-  }
- }
+export function sourceQuestions(task,cards,documents,links=[]){
+ const questions=cards.filter(c=>c.child===task.child&&subjectKey(c.subject)===subjectKey(task.subject)).map(c=>({id:'card:'+c.id,question:c.question,answer:c.answer,source:'Fiche de révision',source_id:c.id,kind:'open'}));
+ for(const doc of taskDocuments(task,documents,links))questions.push(...documentQuestions(doc));
  return [...new Map(questions.map(q=>[q.id,q])).values()].slice(0,10);
 }
 export function gradeAnswer(answer,expected){
