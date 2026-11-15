@@ -95,3 +95,8 @@ test('full document scan includes lesson-only dates, deduplicates references and
  assert.equal(result.rows.length,0);assert.equal(result.course_documents.length,1);assert.equal(result.course_documents[0].date,'2026-11-09');assert.equal(result.course_documents[0].subject,'Histoire');assert.equal(result.coverage.daysRead,2);assert.equal(result.warnings.length,1);
  assert.equal(c.state.attachments.length,1);assert.match(m.calls[1].url,/cahierdetexte\/2026-11-09/);await assert.rejects(c.download('25:course:2026-11-09:12:999'),/Relis les devoirs/);
 });
+test('a teacher Word attachment is downloaded even when the upstream MIME is generic',async()=>{
+ const m=mock([{text:new Uint8Array([80,75,3,4,1,2,3]),headers:{'content-type':'application/octet-stream'}}]);
+ const c=new EDClient({stage:'ready',account:10,students:[{key:'10:25',id:25,account:10}],attachments:[{key:'25:course:77',student:'10:25',fileId:'77',name:'Dialogue.docx'}]},m.fetch);
+ const result=await c.download('25:course:77');assert.equal(result.file.mime,'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+});

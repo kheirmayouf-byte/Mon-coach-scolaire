@@ -1,4 +1,5 @@
-export const allowedTypes=new Set(['application/pdf','image/jpeg','image/png','image/webp','text/plain']);
+import {DOCX_MIME,extractDOCX} from './docx.js';
+export const allowedTypes=new Set(['application/pdf',DOCX_MIME,'image/jpeg','image/png','image/webp','text/plain']);
 export async function inspectFile(file){
  if(file.size<1||file.size>10485760)throw Error('Choisis un document de 10 Mo maximum.');
  const head=new Uint8Array(await file.slice(0,12).arrayBuffer());
@@ -7,7 +8,8 @@ export async function inspectFile(file){
  else if(head[0]===0xff&&head[1]===0xd8)mime='image/jpeg';
  else if(head[0]===0x89&&head[1]===0x50&&head[2]===0x4e&&head[3]===0x47)mime='image/png';
  else if(String.fromCharCode(...head.slice(0,4))==='RIFF'&&String.fromCharCode(...head.slice(8,12))==='WEBP')mime='image/webp';
- else if(mime!=='text/plain')throw Error('Formats acceptés : PDF, JPEG, PNG, WebP et texte. Convertis les autres formats en PDF.');
+ else if(head[0]===0x50&&head[1]===0x4b&&head[2]===3&&head[3]===4&&(mime===DOCX_MIME||/\.docx$/i.test(file.name)))mime=DOCX_MIME;
+ else if(mime!=='text/plain')throw Error('Formats acceptés : PDF, Word DOCX, JPEG, PNG, WebP et texte. Convertis les autres formats en PDF.');
  if(!allowedTypes.has(mime))throw Error('Format de document non pris en charge.');
  return {mime};
 }
@@ -23,6 +25,7 @@ export async function extractFileText(file,mime,options={}){
  try{
   check();
   if(mime==='text/plain')return bounded((await file.text()).trim());
+  if(mime===DOCX_MIME){onProgress('Lecture du document Word…');return bounded(await extractDOCX(file,{signal,Parser:options.Parser}));}
   if(mime.startsWith('image/')){onProgress('Préparation de la photo…');const image=await imageForOCR(file);try{return bounded(await recognize(image));}finally{image.width=0;image.height=0;}}
   if(mime!=='application/pdf')throw Error('Format de document non pris en charge.');
   const pdf=await loadPDF();pdf.GlobalWorkerOptions.workerSrc=new URL('pdf.worker.min.mjs',globalThis.location?.href||'http://localhost/').href;

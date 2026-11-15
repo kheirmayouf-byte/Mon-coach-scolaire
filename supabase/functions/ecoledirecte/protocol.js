@@ -18,7 +18,7 @@ export function checkReply(reply) {
 export function validDate(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&new Date(s+'T12:00:00Z').toISOString().slice(0,10)===s;}
 export class EDClient {
  constructor(state={},fetcher=fetch){this.state={cookies:{},...state};this.fetcher=fetcher;this.deadline=Date.now()+45000;}
- async request(path,payload,gtk=true,bootstrap=false,binary=false){
+ async request(path,payload,gtk=true,bootstrap=false,binary=false,fileName=''){
   // Callers supply only hard-coded route templates; redirects never receive credentials.
   const headers={'User-Agent':UA,Accept:'application/json','Origin':'https://www.ecoledirecte.com','Referer':'https://www.ecoledirecte.com/'};
   const s=this.state;
@@ -44,7 +44,8 @@ export class EDClient {
    if(bytes[0]===0x25&&bytes[1]===0x50&&bytes[2]===0x44&&bytes[3]===0x46)mime='application/pdf';
    else if(bytes[0]===0xff&&bytes[1]===0xd8)mime='image/jpeg';
    else if(bytes[0]===0x89&&bytes[1]===0x50&&bytes[2]===0x4e)mime='image/png';
-   if(!['application/pdf','image/jpeg','image/png','image/webp','text/plain'].includes(mime))throw new EDProblem('Cette pièce jointe doit être convertie en PDF ou en image.');
+   else if(bytes[0]===0x50&&bytes[1]===0x4b&&bytes[2]===3&&bytes[3]===4&&/\.docx$/i.test(fileName))mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+   if(!['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/jpeg','image/png','image/webp','text/plain'].includes(mime))throw new EDProblem('Cette pièce jointe doit être convertie en PDF, DOCX ou en image.');
    let encoded='';for(let i=0;i<bytes.length;i+=8192)encoded+=String.fromCharCode(...bytes.subarray(i,i+8192));
    return {base64:btoa(encoded),mime,bytes:bytes.length};
   }
@@ -168,7 +169,7 @@ export class EDClient {
   const ref=this.state.attachments?.find(a=>a.key===key),student=this.state.students?.find(s=>s.key===ref?.student);
   if(!ref||!student)throw new EDProblem('Relis les devoirs de cet élève pour récupérer cette pièce jointe.');
   if(this.state.account!==student.account)throw new EDProblem('Relis les devoirs de cet élève avant de télécharger ses documents.');
-  const file=await this.request('telechargement.awp?verbe=get&leTypeDeFichier=FICHIER_CDT&fichierId='+encodeURIComponent(ref.fileId),{forceDownload:0},false,false,true);
+  const file=await this.request('telechargement.awp?verbe=get&leTypeDeFichier=FICHIER_CDT&fichierId='+encodeURIComponent(ref.fileId),{forceDownload:0},false,false,true,ref.name);
   return {stage:'ready',students:publicStudents(this.state.students),file:{...file,name:ref.name,key}};
  }
 

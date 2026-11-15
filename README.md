@@ -1,3 +1,7 @@
+## Version 3.4.8 - documents Word du professeur
+
+Les pièces jointes DOCX sont conservées et leur texte est extrait localement. Cette version complète les liens entre documents, devoirs, révisions et exercices, ainsi que les lecteurs audio/vidéo de la 3.4.7. Voir [les vérifications](docs/V3.4.8.md).
+
 ## Version 3.4.7 - supports reliés et ressources dans les exercices
 
 Documents partagés entre devoirs du même enfant, bibliothèque de révision, entraînements à partir de supports, récupération élargie des pièces jointes du cahier de texte, lecteurs audio/vidéo et planning allégé. Voir [les changements et limites](docs/V3.4.7.md).

@@ -34,7 +34,7 @@ test('photo links persist across tasks, revisions and training without sibling a
 
 test('audio and video play inside the exercise window alongside saved answers',async t=>{
  const w=boot(t);await tick();click(w,'[data-tab=revision]');click(w,'[data-x=media-exercise][data-id=next]');
- const frame=w.document.querySelector('.modal iframe'),audio=w.document.querySelector('.modal audio');assert.ok(frame);assert.ok(audio);assert.match(frame.src,/\/videos\/embed\//);assert.match(frame.src,/autoplay=0/);assert.equal(audio.controls,true);assert.equal(audio.autoplay,false);
+ const frame=w.document.querySelector('.modal iframe'),audio=w.document.querySelector('.modal audio');assert.ok(frame);assert.ok(audio);assert.match(frame.src,/\/videos\/embed\//);assert.match(frame.src,/autoplay=0/);assert.equal(audio.controls,true);assert.equal(audio.autoplay,false);assert.doesNotMatch(w.document.querySelector('.modal').textContent,/Il manque la page/);
  w.document.querySelector('.modal [name=answers]').value='Réponse après écoute';submit(w,'.modal [data-xform=workspace]');await tick();
  assert.equal(w.document.querySelector('.modal iframe'),frame);assert.equal(JSON.parse(w.localStorage.getItem('mcs-local-v2')).workspaces[0].answers,'Réponse après écoute');
  click(w,'[data-x=close]');assert.equal(w.document.querySelector('.modal iframe'),null);
