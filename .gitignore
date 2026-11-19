@@ -12,3 +12,7 @@ desktop/release/
 chatgpt-auth*.json
 chatgpt-host*.json
 desktop/vendor/siwc/dist/
+server/build/
+server/state/
+vault.key
+owner.json

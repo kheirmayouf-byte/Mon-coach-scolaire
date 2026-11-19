@@ -1,0 +1,26 @@
+[Unit]
+Description=Mon Coach Scolaire - relais ChatGPT privé
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcs-relay
+Group=mcs-relay
+WorkingDirectory=/opt/mon-coach-scolaire
+Environment=MCS_STATE_DIR=/var/lib/mcs-relay
+ExecStart=/usr/bin/node /opt/mon-coach-scolaire/server/build/relay.cjs serve
+StateDirectory=mcs-relay
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+TimeoutStopSec=210
+
+[Install]
+WantedBy=multi-user.target
